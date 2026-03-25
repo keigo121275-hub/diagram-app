@@ -1,60 +1,123 @@
-// 【このファイルの役割】
-// AIと1問ずつやりとりする画面
-// 情報が揃ったら「資料を生成する」ボタンが出て、HTMLプレビューが表示される
+/**
+ * チャットページ（/chat）
+ *
+ * 役割：AIと1問ずつやりとりして情報を集め、HTMLを生成・表示する。
+ *
+ * 流れ：
+ *   ① 画面が開いたらAIの最初のメッセージを表示
+ *   ② ユーザーが会話を貼り付け → AIが質問 → ユーザーが答える（繰り返し）
+ *   ③ AIが [COMPLETE] を返したら「資料を生成する」ボタンを表示
+ *   ④ ボタンを押すと /api/generate を呼んでHTMLを取得
+ *   ⑤ iframeにHTMLを表示 + ダウンロード・別タブで開くボタンを出す
+ *
+ * URLパラメータ：
+ *   type: "mindmap" | "step-flow" | "report"
+ *   tone: "good" | "normal"（reportのときのみ）
+ */
 
 "use client";
 
 import { useState, useRef, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
+// ─────────────────────────────────────────────
+// 型定義
+// ─────────────────────────────────────────────
+
 interface Message {
   role: "user" | "assistant";
   content: string;
 }
 
-function ChatContent() {
-  const searchParams = useSearchParams();
-  const diagramType = searchParams.get("type") || "report";
-  const reportTone = searchParams.get("tone") || "good";
+// ─────────────────────────────────────────────
+// ヘルパー関数
+// ─────────────────────────────────────────────
 
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [isComplete, setIsComplete] = useState(false);
+// 図の種類に応じた最初のメッセージを返す
+function getGreeting(diagramType: string): string {
+  const greetings: Record<string, string> = {
+    report:     "こんにちは！報告内容を図解します。\nまず、報告したい内容をそのまま貼り付けてください。",
+    mindmap:    "こんにちは！マインドマップを作ります。\n整理したい会話や内容をそのまま貼り付けてください。",
+    "step-flow": "こんにちは！フロー図を作ります。\n整理したい会話や内容をそのまま貼り付けてください。",
+  };
+  return greetings[diagramType] ?? greetings["report"];
+}
+
+// ヘッダーに表示する図の種類ラベル
+function getTypeLabel(diagramType: string, reportTone: string): string {
+  const labels: Record<string, string> = {
+    mindmap:     "マインドマップ型",
+    "step-flow": "STEP・フロー型",
+    report:      reportTone === "good" ? "報告型（良い報告）" : "報告型（普通/改善）",
+  };
+  return labels[diagramType] ?? diagramType;
+}
+
+// ─────────────────────────────────────────────
+// メインのチャットコンポーネント
+// ─────────────────────────────────────────────
+
+function ChatContent() {
+  // URLパラメータから図の種類とトーンを取得
+  const searchParams = useSearchParams();
+  const diagramType = searchParams.get("type") ?? "report";
+  const reportTone  = searchParams.get("tone") ?? "good";
+
+  // ── 状態管理 ──────────────────────────────
+
+  // 会話の履歴（AIとユーザーのやりとりを配列で管理）
+  const [messages, setMessages]       = useState<Message[]>([]);
+
+  // 入力欄のテキスト
+  const [input, setInput]             = useState("");
+
+  // AIが返事を考えている間 true
+  const [isLoading, setIsLoading]     = useState(false);
+
+  // AIが「情報が揃った」と判断したら true → 生成ボタンを表示
+  const [isComplete, setIsComplete]   = useState(false);
+
+  // 生成されたHTMLを保持（null なら未生成）
   const [generatedHtml, setGeneratedHtml] = useState<string | null>(null);
+
+  // HTML生成中は true
   const [isGenerating, setIsGenerating] = useState(false);
 
+  // スクロール用の参照（メッセージ追加時に一番下へ）
   const bottomRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // 最初のメッセージ：AIから「会話を貼ってください」と始める
+  // ── 初期化 ──────────────────────────────
+
+  // 画面が開いたときに最初のAIメッセージをセット
   useEffect(() => {
-    const greeting = getGreeting(diagramType);
-    setMessages([{ role: "assistant", content: greeting }]);
+    setMessages([{ role: "assistant", content: getGreeting(diagramType) }]);
   }, [diagramType]);
 
-  // メッセージが増えるたびに一番下にスクロールする
+  // メッセージが増えるたびに自動スクロール
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // ユーザーがメッセージを送信する
+  // ── イベントハンドラ ──────────────────────
+
+  // メッセージを送信する
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return;
 
     const userMessage: Message = { role: "user", content: input };
-    const newMessages = [...messages, userMessage];
-    setMessages(newMessages);
+    const updatedMessages = [...messages, userMessage];
+
+    setMessages(updatedMessages);
     setInput("");
     setIsLoading(true);
 
     try {
-      // API Route（/api/chat）に会話を送る
+      // /api/chat に会話履歴を送り、AIの返事をもらう
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: newMessages,
+          messages:    updatedMessages,
           diagramType,
           reportTone,
         }),
@@ -62,16 +125,12 @@ function ChatContent() {
 
       const data = await res.json();
 
-      // Claudeの返事をメッセージに追加する
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: data.message },
-      ]);
+      // AIの返事を会話履歴に追加
+      setMessages((prev) => [...prev, { role: "assistant", content: data.message }]);
 
-      // isCompleteがtrueになったら「生成する」ボタンを表示
-      if (data.isComplete) {
-        setIsComplete(true);
-      }
+      // isComplete が true なら生成ボタンを表示する
+      if (data.isComplete) setIsComplete(true);
+
     } catch {
       setMessages((prev) => [
         ...prev,
@@ -82,10 +141,11 @@ function ChatContent() {
     }
   };
 
-  // 「資料を生成する」ボタンを押したとき
+  // HTMLを生成する（「資料を生成する」ボタンを押したとき）
   const generateHtml = async () => {
     setIsGenerating(true);
     try {
+      // /api/generate に会話履歴を送り、HTMLをもらう
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -94,11 +154,31 @@ function ChatContent() {
 
       const data = await res.json();
       setGeneratedHtml(data.html);
+
     } catch {
-      alert("生成に失敗しました。もう一度お試しください。");
+      alert("HTMLの生成に失敗しました。もう一度お試しください。");
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  // HTMLをファイルとしてダウンロードする
+  const downloadHtml = () => {
+    if (!generatedHtml) return;
+    const blob = new Blob([generatedHtml], { type: "text/html" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href     = url;
+    a.download = "diagram.html";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // 別タブでHTMLを開く
+  const openInNewTab = () => {
+    if (!generatedHtml) return;
+    const blob = new Blob([generatedHtml], { type: "text/html" });
+    window.open(URL.createObjectURL(blob), "_blank");
   };
 
   // Enterキーで送信（Shift+Enterは改行）
@@ -109,127 +189,100 @@ function ChatContent() {
     }
   };
 
-  const typeLabel: Record<string, string> = {
-    mindmap: "マインドマップ型",
-    "step-flow": "STEP・フロー型",
-    report: reportTone === "good" ? "報告型（良い報告）" : "報告型（普通/改善）",
-  };
+  // ── レンダリング ──────────────────────────
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
 
       {/* ヘッダー */}
       <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center gap-3">
-        <a href="/" className="text-sm text-gray-400 hover:text-gray-600">← 戻る</a>
+        <a href="/" className="text-sm text-gray-400 hover:text-gray-600 transition-colors">← 戻る</a>
         <span className="text-gray-300">|</span>
-        <span className="text-sm font-bold text-gray-700">{typeLabel[diagramType]}</span>
+        <span className="text-sm font-bold text-gray-700">{getTypeLabel(diagramType, reportTone)}</span>
       </header>
 
-      {/* HTMLプレビューが生成されたら表示 */}
+      {/* HTMLが生成されたらプレビューを全画面表示 */}
       {generatedHtml ? (
         <div className="flex-1 flex flex-col">
+          {/* プレビューのツールバー */}
           <div className="bg-green-50 border-b border-green-200 px-6 py-3 flex items-center justify-between">
             <span className="text-sm font-bold text-green-700">✅ 資料が生成されました</span>
             <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  const blob = new Blob([generatedHtml], { type: "text/html" });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = "diagram.html";
-                  a.click();
-                }}
-                className="text-xs bg-white border border-green-300 text-green-700 px-4 py-2 rounded-lg font-bold hover:bg-green-50"
-              >
+              <button onClick={downloadHtml} className="text-xs bg-white border border-green-300 text-green-700 px-4 py-2 rounded-lg font-bold hover:bg-green-50 transition-colors">
                 ダウンロード
               </button>
-              <button
-                onClick={() => {
-                  const blob = new Blob([generatedHtml], { type: "text/html" });
-                  const url = URL.createObjectURL(blob);
-                  window.open(url, "_blank");
-                }}
-                className="text-xs bg-green-500 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-600"
-              >
+              <button onClick={openInNewTab} className="text-xs bg-green-500 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-600 transition-colors">
                 別タブで開く
               </button>
             </div>
           </div>
-          <iframe
-            srcDoc={generatedHtml}
-            className="flex-1 w-full border-0"
-            title="生成されたHTML"
-          />
+          {/* iframeでHTMLをそのまま表示 */}
+          <iframe srcDoc={generatedHtml} className="flex-1 w-full border-0" title="生成されたHTML" />
         </div>
+
       ) : (
         <>
           {/* チャットエリア */}
           <div className="flex-1 overflow-y-auto px-4 py-6 max-w-2xl mx-auto w-full">
             <div className="flex flex-col gap-4">
+
+              {/* メッセージ一覧 */}
               {messages.map((msg, i) => (
-                <div
-                  key={i}
-                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-                >
-                  <div
-                    className={`max-w-[85%] px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
-                      msg.role === "user"
-                        ? "bg-blue-500 text-white rounded-br-sm"
-                        : "bg-white border border-gray-200 text-gray-800 rounded-bl-sm shadow-sm"
-                    }`}
-                  >
+                <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                  <div className={`max-w-[85%] px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
+                    msg.role === "user"
+                      ? "bg-blue-500 text-white rounded-br-sm"
+                      : "bg-white border border-gray-200 text-gray-800 rounded-bl-sm shadow-sm"
+                  }`}>
                     {msg.content}
                   </div>
                 </div>
               ))}
 
-              {/* ローディング表示 */}
+              {/* AIが考え中のローディング表示 */}
               {isLoading && (
                 <div className="flex justify-start">
                   <div className="bg-white border border-gray-200 px-4 py-3 rounded-2xl rounded-bl-sm shadow-sm">
                     <div className="flex gap-1 items-center h-4">
-                      <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                      <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                      <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                      {[0, 150, 300].map((delay) => (
+                        <span key={delay} className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: `${delay}ms` }} />
+                      ))}
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* 情報が揃ったら「生成する」ボタンを表示 */}
+              {/* 情報が揃ったら「資料を生成する」ボタンを表示 */}
               {isComplete && !isGenerating && (
                 <div className="flex justify-center mt-4">
-                  <button
-                    onClick={generateHtml}
-                    className="bg-orange-500 text-white px-8 py-4 rounded-2xl font-bold text-sm hover:bg-orange-600 transition-all shadow-lg"
-                  >
+                  <button onClick={generateHtml} className="bg-orange-500 text-white px-8 py-4 rounded-2xl font-bold text-sm hover:bg-orange-600 transition-all shadow-lg">
                     ✨ 資料を生成する
                   </button>
                 </div>
               )}
 
+              {/* HTML生成中のローディング */}
               {isGenerating && (
                 <div className="flex justify-center mt-4">
                   <div className="text-sm text-gray-500 animate-pulse">資料を生成中...</div>
                 </div>
               )}
 
+              {/* スクロール用の空要素 */}
               <div ref={bottomRef} />
             </div>
           </div>
 
-          {/* 入力エリア */}
+          {/* メッセージ入力エリア */}
           <div className="bg-white border-t border-gray-200 px-4 py-4">
             <div className="max-w-2xl mx-auto flex gap-3 items-end">
               <textarea
-                ref={textareaRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="メッセージを入力（Enterで送信 / Shift+Enterで改行）"
                 rows={2}
-                disabled={isLoading || isComplete}
+                disabled={isLoading || isComplete} // AI処理中・完了後は入力不可
                 className="flex-1 resize-none border border-gray-300 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-blue-400 disabled:bg-gray-50 disabled:text-gray-400"
               />
               <button
@@ -249,16 +302,7 @@ function ChatContent() {
   );
 }
 
-function getGreeting(diagramType: string): string {
-  if (diagramType === "report") {
-    return "こんにちは！報告内容を図解します。\nまず、報告したい内容をそのまま貼り付けてください。";
-  }
-  if (diagramType === "mindmap") {
-    return "こんにちは！マインドマップを作ります。\n整理したい会話や内容をそのまま貼り付けてください。";
-  }
-  return "こんにちは！フロー図を作ります。\n整理したい会話や内容をそのまま貼り付けてください。";
-}
-
+// Suspenseで包む理由：useSearchParams() はサスペンスが必要なため
 export default function ChatPage() {
   return (
     <Suspense>
