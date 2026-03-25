@@ -86,6 +86,9 @@ function ChatContent() {
   // スクロール用の参照（メッセージ追加時に一番下へ）
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  // エンター2回送信のために直前のEnterキー押下時刻を保持
+  const lastEnterTimeRef = useRef<number>(0);
+
   // ── 初期化 ──────────────────────────────
 
   // 画面が開いたときに最初のAIメッセージをセット
@@ -181,11 +184,22 @@ function ChatContent() {
     window.open(URL.createObjectURL(blob), "_blank");
   };
 
-  // Enterキーで送信（Shift+Enterは改行）
+  // キー操作：Shift+Enter=改行 / Enter2回=送信 / Enter1回=改行（変換猶予）
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
+    if (e.key !== "Enter") return;
+    if (e.shiftKey) return; // Shift+Enter はデフォルトの改行動作に任せる
+    if (e.nativeEvent.isComposing) return; // IME変換中はEnterを送信に使わない
+
+    e.preventDefault();
+    const now = Date.now();
+    if (now - lastEnterTimeRef.current < 500) {
+      // 500ms以内に2回Enterが押された → 送信
       sendMessage();
+      lastEnterTimeRef.current = 0;
+    } else {
+      // 1回目のEnter → 改行だけ入れて待機
+      setInput((prev) => prev + "\n");
+      lastEnterTimeRef.current = now;
     }
   };
 
@@ -280,7 +294,7 @@ function ChatContent() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="メッセージを入力（Enterで送信 / Shift+Enterで改行）"
+                placeholder="メッセージを入力（Enter2回で送信 / Shift+Enterで改行）"
                 rows={2}
                 disabled={isLoading || isComplete} // AI処理中・完了後は入力不可
                 className="flex-1 resize-none border border-gray-300 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-blue-400 disabled:bg-gray-50 disabled:text-gray-400"
