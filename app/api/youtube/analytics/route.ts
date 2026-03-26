@@ -1,24 +1,25 @@
 /**
- * 動画ごとの YouTube Analytics データを返す。
+ * YouTube Analytics データを返す。
  *
  * クエリパラメータ:
  *   - channelId:  接続済みチャンネルのID
  *   - videoIds:   カンマ区切りの動画ID（最大50件）
  *
  * レスポンス:
- *   - analytics: VideoAnalytics[]
+ *   - analytics: VideoAnalytics[]  動画ごとの視聴維持率
+ *   - channelCtr: number | null    チャンネル全体のCTR（動画ごとには取得不可）
  *   - forbidden: true（権限なしの場合）
  *
- * 取得する指標:
- *   - impressionClickThroughRate  → CTR（インプレッション→クリック率）
- *   - averageViewPercentage       → 平均視聴維持率（%）
+ * YouTube Analytics API の制約:
+ *   - averageViewPercentage は動画ごと（video ディメンション）で取得可能
+ *   - videoThumbnailImpressionsClickRate は insightTrafficSourceType ディメンションが必須
+ *     → 流入元ごとに取得し、インプレッション数で加重平均してチャンネル全体CTRを算出
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getYoutubeAnalyticsClient } from "@/lib/getYoutubeAnalyticsClient";
 
 export type VideoAnalytics = {
   videoId: string;
-  ctr: number | null;
   avgViewPercent: number | null;
 };
 
@@ -44,24 +45,30 @@ export async function GET(request: NextRequest) {
     .toISOString()
     .split("T")[0];
 
-  const baseQuery = {
-    ids: `channel==${channelId}`,
-    startDate: twoYearsAgo,
-    endDate: today,
-    dimensions: "video" as const,
-    filters: `video==${videoIds}`,
-    maxResults: 200,
-  };
-
   try {
-    // impressionClickThroughRate と averageViewPercentage は別グループのため
-    // 同一クエリに混在不可 → 2つのリクエストに分けて並行取得する
-    const [retentionResult, ctrResult] = await Promise.allSettled([
-      client.reports.query({ ...baseQuery, metrics: "averageViewPercentage" }),
-      client.reports.query({ ...baseQuery, metrics: "impressionClickThroughRate" }),
+    const [retentionResult, channelCtrResult] = await Promise.allSettled([
+      // 動画ごとの視聴維持率
+      client.reports.query({
+        ids: `channel==${channelId}`,
+        startDate: twoYearsAgo,
+        endDate: today,
+        dimensions: "video",
+        filters: `video==${videoIds}`,
+        metrics: "averageViewPercentage",
+        maxResults: 200,
+      }),
+      // 流入元ごとのインプレッション数とCTRを取得
+      // （CTRは単独取得不可のため insightTrafficSourceType ディメンションが必須）
+      client.reports.query({
+        ids: `channel==${channelId}`,
+        startDate: twoYearsAgo,
+        endDate: today,
+        dimensions: "insightTrafficSourceType",
+        metrics: "videoThumbnailImpressions,videoThumbnailImpressionsClickRate",
+      }),
     ]);
 
-    // 視聴維持率のマップを作る
+    // 動画ごとの視聴維持率マップを作る
     const retentionMap = new Map<string, number>();
     if (retentionResult.status === "fulfilled") {
       const headers = (retentionResult.value.data.columnHeaders ?? []).map((h) => h.name ?? "");
@@ -75,45 +82,44 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // CTR のマップを作る
-    const ctrMap = new Map<string, number>();
-    if (ctrResult.status === "fulfilled") {
-      const headers = (ctrResult.value.data.columnHeaders ?? []).map((h) => h.name ?? "");
-      const rows = (ctrResult.value.data.rows ?? []) as (string | number | null)[][];
-      const vIdx = headers.indexOf("video");
-      const cIdx = headers.indexOf("impressionClickThroughRate");
-      for (const row of rows) {
-        if (vIdx >= 0 && cIdx >= 0 && row[vIdx] && row[cIdx] != null) {
-          ctrMap.set(row[vIdx] as string, row[cIdx] as number);
+    // 流入元ごとのデータからチャンネル全体のCTRを加重平均で計算する
+    // 計算式：Σ(流入元ごとのインプレッション × CTR) ÷ 全インプレッション合計
+    let channelCtr: number | null = null;
+    if (channelCtrResult.status === "fulfilled") {
+      const headers = (channelCtrResult.value.data.columnHeaders ?? []).map((h) => h.name ?? "");
+      const rows = (channelCtrResult.value.data.rows ?? []) as (string | number | null)[][];
+      const impIdx = headers.indexOf("videoThumbnailImpressions");
+      const ctrIdx = headers.indexOf("videoThumbnailImpressionsClickRate");
+      if (impIdx >= 0 && ctrIdx >= 0 && rows.length > 0) {
+        let totalImpressions = 0;
+        let weightedCtrSum = 0;
+        for (const row of rows) {
+          const imp = row[impIdx] as number ?? 0;
+          const ctr = row[ctrIdx] as number ?? 0;
+          totalImpressions += imp;
+          weightedCtrSum += imp * ctr;
+        }
+        if (totalImpressions > 0) {
+          channelCtr = weightedCtrSum / totalImpressions;
         }
       }
     }
 
-    // 取得できた動画ID の全体 = 両マップのキーをマージ
-    const allVideoIds = Array.from(
-      new Set([...retentionMap.keys(), ...ctrMap.keys()])
+    const analytics: VideoAnalytics[] = Array.from(retentionMap.entries()).map(
+      ([videoId, avgViewPercent]) => ({ videoId, avgViewPercent })
     );
 
-    const analytics: VideoAnalytics[] = allVideoIds.map((videoId) => ({
-      videoId,
-      ctr: ctrMap.get(videoId) ?? null,
-      avgViewPercent: retentionMap.get(videoId) ?? null,
-    }));
-
-    // 両方 403 の場合は権限なしとして返す
-    const both403 =
-      retentionResult.status === "rejected" &&
-      ctrResult.status === "rejected" &&
-      (retentionResult.reason as { status?: number })?.status === 403;
-
-    if (both403) {
-      return NextResponse.json(
-        { forbidden: true, error: "このチャンネルのアナリティクスにアクセスする権限がありません" },
-        { status: 403 }
-      );
+    if (retentionResult.status === "rejected") {
+      const status = (retentionResult.reason as { status?: number })?.status;
+      if (status === 403) {
+        return NextResponse.json(
+          { forbidden: true, error: "このチャンネルのアナリティクスにアクセスする権限がありません" },
+          { status: 403 }
+        );
+      }
     }
 
-    return NextResponse.json({ analytics });
+    return NextResponse.json({ analytics, channelCtr });
   } catch (err: unknown) {
     const status = (err as { status?: number })?.status;
     if (status === 403) {
