@@ -1,11 +1,11 @@
 /**
  * 指定チャンネルの保存済みリフレッシュトークンを使って
- * YouTube Data API クライアントを生成する。
+ * YouTube Analytics API クライアントを生成する。
  */
 import { google } from "googleapis";
 import { getChannelToken } from "./channelTokenStore";
 
-export async function getYoutubeClient(channelId: string) {
+export async function getYoutubeAnalyticsClient(channelId: string) {
   const token = await getChannelToken(channelId);
   if (!token) return null;
 
@@ -16,5 +16,5 @@ export async function getYoutubeClient(channelId: string) {
   );
 
   oauth2Client.setCredentials({ refresh_token: token.refreshToken });
-  return google.youtube({ version: "v3", auth: oauth2Client });
+  return google.youtubeAnalytics({ version: "v2", auth: oauth2Client });
 }

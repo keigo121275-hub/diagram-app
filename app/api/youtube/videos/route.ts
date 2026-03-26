@@ -1,14 +1,27 @@
+/**
+ * 動画一覧を返す。
+ *
+ * クエリパラメータ:
+ *   - channelId: 接続済みチャンネルのID（トークン取得に使用）
+ *   - uploadsPlaylistId: 動画を取得するアップロードプレイリストID
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { getYoutubeClient } from "@/lib/getYoutubeClient";
+import { Video } from "@/lib/types";
 
 export async function GET(request: NextRequest) {
-  const uploadsPlaylistId = request.nextUrl.searchParams.get("uploadsPlaylistId");
+  const { searchParams } = request.nextUrl;
+  const channelId = searchParams.get("channelId");
+  const uploadsPlaylistId = searchParams.get("uploadsPlaylistId");
 
-  if (!uploadsPlaylistId) {
-    return NextResponse.json({ error: "uploadsPlaylistId が必要です" }, { status: 400 });
+  if (!channelId || !uploadsPlaylistId) {
+    return NextResponse.json(
+      { error: "channelId と uploadsPlaylistId が必要です" },
+      { status: 400 }
+    );
   }
 
-  const youtube = await getYoutubeClient();
+  const youtube = await getYoutubeClient(channelId);
   if (!youtube) {
     return NextResponse.json(
       { error: "チャンネルが未接続です。/youtube/connect から接続してください。" },
@@ -18,7 +31,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const playlistRes = await youtube.playlistItems.list({
-      part: ["snippet", "contentDetails"],
+      part: ["contentDetails"],
       playlistId: uploadsPlaylistId,
       maxResults: 50,
     });
@@ -36,7 +49,7 @@ export async function GET(request: NextRequest) {
       id: videoIds,
     });
 
-    const videos = statsRes.data.items?.map((item) => ({
+    const videos: Video[] = statsRes.data.items?.map((item) => ({
       id: item.id ?? "",
       title: item.snippet?.title ?? "",
       thumbnail:
@@ -46,11 +59,11 @@ export async function GET(request: NextRequest) {
       publishedAt: item.snippet?.publishedAt ?? "",
       viewCount: item.statistics?.viewCount ?? "0",
       likeCount: item.statistics?.likeCount ?? "0",
-    }));
+    })) ?? [];
 
     return NextResponse.json({ videos });
   } catch (err) {
-    console.error("YouTube API error:", err);
+    console.error("YouTube videos API error:", err);
     return NextResponse.json(
       { error: "YouTube APIの呼び出しに失敗しました" },
       { status: 500 }

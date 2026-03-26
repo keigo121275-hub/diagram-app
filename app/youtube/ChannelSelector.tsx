@@ -1,16 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Channel } from "@/lib/types";
 import VideoList from "./VideoList";
-
-type Channel = {
-  id: string;
-  name: string;
-  thumbnail: string;
-  subscriberCount: string;
-  videoCount: string;
-  uploadsPlaylistId: string;
-};
 
 export default function ChannelSelector() {
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -26,6 +18,7 @@ export default function ChannelSelector() {
           setError(data.error);
         } else {
           setChannels(data.channels);
+          // チャンネルが1件だけなら自動選択
           if (data.channels.length === 1) {
             setSelected(data.channels[0]);
           }
@@ -73,7 +66,7 @@ export default function ChannelSelector() {
           )}
           <span className="font-semibold text-white">{selected.name}</span>
         </div>
-        <VideoList uploadsPlaylistId={selected.uploadsPlaylistId} />
+        <VideoList channelId={selected.id} uploadsPlaylistId={selected.uploadsPlaylistId} />
       </div>
     );
   }
@@ -88,7 +81,7 @@ export default function ChannelSelector() {
           href="/youtube/connect"
           className="text-sm text-gray-500 hover:text-white transition-colors"
         >
-          チャンネルを切り替える
+          チャンネルを管理する
         </a>
       </div>
       <div className="grid gap-3 max-w-xl">

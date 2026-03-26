@@ -1,33 +1,73 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Video } from "@/lib/types";
 
-type Video = {
-  id: string;
-  title: string;
-  thumbnail: string;
-  publishedAt: string;
-  viewCount: string;
-  likeCount: string;
+type Props = {
+  channelId: string;
+  uploadsPlaylistId: string;
 };
 
-export default function VideoList({ uploadsPlaylistId }: { uploadsPlaylistId: string }) {
+export default function VideoList({ channelId, uploadsPlaylistId }: Props) {
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [analyticsUnavailable, setAnalyticsUnavailable] = useState(false);
 
+  // Step1: 動画一覧を取得
   useEffect(() => {
-    if (!uploadsPlaylistId) return;
+    if (!channelId || !uploadsPlaylistId) return;
 
-    fetch(`/api/youtube/videos?uploadsPlaylistId=${encodeURIComponent(uploadsPlaylistId)}`)
+    const params = new URLSearchParams({ channelId, uploadsPlaylistId });
+    fetch(`/api/youtube/videos?${params.toString()}`)
       .then((res) => res.json())
       .then((data) => {
-        if (data.error) setError(data.error);
-        else setVideos(data.videos);
+        if (data.error) {
+          setError(data.error);
+        } else {
+          setVideos(data.videos);
+        }
       })
       .catch(() => setError("動画の取得に失敗しました"))
       .finally(() => setLoading(false));
-  }, [uploadsPlaylistId]);
+  }, [channelId, uploadsPlaylistId]);
+
+  // Step2: 動画一覧が揃ったらアナリティクスを取得してマージ
+  useEffect(() => {
+    if (videos.length === 0) return;
+
+    setAnalyticsLoading(true);
+    const videoIds = videos.map((v) => v.id).join(",");
+    const params = new URLSearchParams({ channelId, videoIds });
+
+    fetch(`/api/youtube/analytics?${params.toString()}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.forbidden) {
+          setAnalyticsUnavailable(true);
+          return;
+        }
+        if (data.analytics) {
+          const analyticsMap = new Map(
+            data.analytics.map((a: { videoId: string; ctr: number | null; avgViewPercent: number | null }) => [
+              a.videoId,
+              a,
+            ])
+          );
+          setVideos((prev) =>
+            prev.map((v) => {
+              const a = analyticsMap.get(v.id) as { ctr: number | null; avgViewPercent: number | null } | undefined;
+              return a ? { ...v, ctr: a.ctr, avgViewPercent: a.avgViewPercent } : v;
+            })
+          );
+        }
+      })
+      .catch(() => {
+        // アナリティクス取得失敗は無視（基本データは表示する）
+      })
+      .finally(() => setAnalyticsLoading(false));
+  }, [videos.length, channelId]);
 
   if (loading) {
     return (
@@ -48,9 +88,23 @@ export default function VideoList({ uploadsPlaylistId }: { uploadsPlaylistId: st
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-gray-300 mb-5">
-        最新の動画 ({videos.length}本)
-      </h2>
+      <div className="flex items-center justify-between mb-5">
+        <h2 className="text-lg font-semibold text-gray-300">
+          最新の動画 ({videos.length}本)
+        </h2>
+        {analyticsLoading && (
+          <span className="text-xs text-gray-500 flex items-center gap-1.5">
+            <span className="animate-spin inline-block w-3 h-3 border border-gray-500 border-t-transparent rounded-full" />
+            アナリティクス取得中...
+          </span>
+        )}
+        {analyticsUnavailable && (
+          <span className="text-xs text-yellow-600">
+            ⚠ アナリティクスの権限なし（再生数のみ表示）
+          </span>
+        )}
+      </div>
+
       <div className="grid gap-4">
         {videos.map((video) => (
           <div
@@ -69,19 +123,40 @@ export default function VideoList({ uploadsPlaylistId }: { uploadsPlaylistId: st
               <p className="text-sm text-gray-500 mb-3">
                 {new Date(video.publishedAt).toLocaleDateString("ja-JP")}
               </p>
-              <div className="flex gap-6">
-                <div>
-                  <p className="text-xs text-gray-500">再生数</p>
-                  <p className="text-lg font-bold text-white">
-                    {Number(video.viewCount).toLocaleString()}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">高評価</p>
-                  <p className="text-lg font-bold text-white">
-                    {Number(video.likeCount).toLocaleString()}
-                  </p>
-                </div>
+
+              <div className="flex flex-wrap gap-x-6 gap-y-2">
+                <Stat label="再生数" value={Number(video.viewCount).toLocaleString()} />
+                <Stat label="高評価" value={Number(video.likeCount).toLocaleString()} />
+                <Stat
+                  label="CTR"
+                  value={
+                    video.ctr != null
+                      ? `${(video.ctr * 100).toFixed(1)}%`
+                      : analyticsLoading
+                      ? "..."
+                      : analyticsUnavailable
+                      ? "—"
+                      : "—"
+                  }
+                  highlight={video.ctr != null ? ctrColor(video.ctr) : undefined}
+                />
+                <Stat
+                  label="視聴維持率"
+                  value={
+                    video.avgViewPercent != null
+                      ? `${video.avgViewPercent.toFixed(1)}%`
+                      : analyticsLoading
+                      ? "..."
+                      : analyticsUnavailable
+                      ? "—"
+                      : "—"
+                  }
+                  highlight={
+                    video.avgViewPercent != null
+                      ? retentionColor(video.avgViewPercent)
+                      : undefined
+                  }
+                />
               </div>
             </div>
           </div>
@@ -89,4 +164,38 @@ export default function VideoList({ uploadsPlaylistId }: { uploadsPlaylistId: st
       </div>
     </div>
   );
+}
+
+function Stat({
+  label,
+  value,
+  highlight,
+}: {
+  label: string;
+  value: string;
+  highlight?: string;
+}) {
+  return (
+    <div>
+      <p className="text-xs text-gray-500">{label}</p>
+      <p className={`text-lg font-bold ${highlight ?? "text-white"}`}>{value}</p>
+    </div>
+  );
+}
+
+// CTR の水準に応じて色をつける
+// 業界平均: 2〜10%。4%以上で良好とする
+function ctrColor(ctr: number): string {
+  const pct = ctr * 100;
+  if (pct >= 6) return "text-green-400";
+  if (pct >= 4) return "text-yellow-400";
+  return "text-red-400";
+}
+
+// 視聴維持率の水準に応じて色をつける
+// 40%以上で良好とする
+function retentionColor(pct: number): string {
+  if (pct >= 40) return "text-green-400";
+  if (pct >= 30) return "text-yellow-400";
+  return "text-red-400";
 }
