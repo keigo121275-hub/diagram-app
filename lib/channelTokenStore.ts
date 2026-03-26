@@ -27,8 +27,14 @@ async function readBlobTokens(): Promise<Record<string, ChannelToken>> {
     const { list } = await import("@vercel/blob");
     const { blobs } = await list({ prefix: "channel-tokens-" });
     if (blobs.length === 0) return {};
-    // Private ストアのため downloadUrl（署名付きURL）でフェッチする
-    const res = await fetch(blobs[0].downloadUrl, { cache: "no-store" });
+    // Private ストアのため Authorization ヘッダーを付けてフェッチする
+    const res = await fetch(blobs[0].downloadUrl, {
+      cache: "no-store",
+      headers: {
+        Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN ?? ""}`,
+      },
+    });
+    if (!res.ok) return {};
     return await res.json();
   } catch {
     return {};
@@ -41,6 +47,7 @@ async function writeBlobTokens(tokens: Record<string, ChannelToken>): Promise<vo
     access: "private",
     contentType: "application/json",
     addRandomSuffix: false,
+    allowOverwrite: true,
   });
 }
 
