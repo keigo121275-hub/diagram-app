@@ -12,6 +12,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getYoutubeClient } from "@/lib/getYoutubeClient";
 import redis from "@/lib/redis";
+import { youtube_v3 } from "googleapis";
+import type { GaxiosResponseWithHTTP2 } from "googleapis-common";
 
 export type SnapRecord = {
   views: number;
@@ -28,27 +30,29 @@ function todayJST(): string {
 
 /** uploadsPlaylistId から全動画IDをページネーションで取得 */
 async function fetchAllVideoIds(
-  youtube: Awaited<ReturnType<typeof getYoutubeClient>>,
+  youtube: youtube_v3.Youtube,
   uploadsPlaylistId: string
 ): Promise<string[]> {
-  if (!youtube) return [];
   const ids: string[] = [];
   let pageToken: string | undefined = undefined;
 
-  do {
-    const res = await youtube.playlistItems.list({
-      part: ["contentDetails"],
-      playlistId: uploadsPlaylistId,
-      maxResults: 50,
-      pageToken,
-    });
+  let hasMore = true;
+  while (hasMore) {
+    const res: GaxiosResponseWithHTTP2<youtube_v3.Schema$PlaylistItemListResponse> =
+      await youtube.playlistItems.list({
+        part: ["contentDetails"],
+        playlistId: uploadsPlaylistId,
+        maxResults: 50,
+        pageToken,
+      });
     const batch =
       res.data.items
         ?.map((item) => item.contentDetails?.videoId)
         .filter(Boolean) as string[];
     ids.push(...batch);
     pageToken = res.data.nextPageToken ?? undefined;
-  } while (pageToken);
+    hasMore = !!pageToken;
+  }
 
   return ids;
 }
