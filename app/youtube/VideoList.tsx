@@ -32,6 +32,32 @@ export default function VideoList({ channelId, uploadsPlaylistId }: Props) {
   const [timeseriesLoading, setTimeseriesLoading] = useState(false);
   const [timeseriesFetched, setTimeseriesFetched] = useState(false);
 
+  // スナップショット記録
+  const [snapshotStatus, setSnapshotStatus] = useState<
+    "idle" | "loading" | "done" | "error"
+  >("idle");
+  const [snapshotResult, setSnapshotResult] = useState<string | null>(null);
+
+  async function handleSnapshot() {
+    if (snapshotStatus === "loading") return;
+    setSnapshotStatus("loading");
+    setSnapshotResult(null);
+    try {
+      const res = await fetch("/api/youtube/snapshot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channelId, uploadsPlaylistId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "エラー");
+      setSnapshotResult(`${data.saved}本 (${data.date})`);
+      setSnapshotStatus("done");
+    } catch (e) {
+      setSnapshotResult(e instanceof Error ? e.message : "失敗");
+      setSnapshotStatus("error");
+    }
+  }
+
   // Step1: 動画一覧を取得
   useEffect(() => {
     if (!channelId || !uploadsPlaylistId) return;
@@ -101,7 +127,7 @@ export default function VideoList({ channelId, uploadsPlaylistId }: Props) {
     );
     const params = new URLSearchParams({ channelId, videos: videosParam });
 
-    fetch(`/api/youtube/timeseries?${params.toString()}`)
+    fetch(`/api/youtube/kv-timeseries?${params.toString()}`)
       .then((res) => res.json())
       .then((data) => {
         if (data.timeseries) {
@@ -159,6 +185,44 @@ export default function VideoList({ channelId, uploadsPlaylistId }: Props) {
 
   return (
     <div>
+      {/* ヘッダー行: タイトル + 今すぐ記録ボタン */}
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-base font-semibold text-gray-400">チャンネル概要</h1>
+        <div className="flex items-center gap-3">
+          {snapshotResult && (
+            <span
+              className={`text-xs ${snapshotStatus === "error" ? "text-red-400" : "text-green-400"}`}
+            >
+              {snapshotStatus === "done" ? `✓ 記録完了: ${snapshotResult}` : `⚠ ${snapshotResult}`}
+            </span>
+          )}
+          <button
+            onClick={handleSnapshot}
+            disabled={snapshotStatus === "loading"}
+            className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors border ${
+              snapshotStatus === "loading"
+                ? "bg-gray-800 text-gray-500 border-gray-700 cursor-not-allowed"
+                : snapshotStatus === "done"
+                ? "bg-green-900/40 text-green-400 border-green-700 hover:bg-green-900/60"
+                : snapshotStatus === "error"
+                ? "bg-red-900/40 text-red-400 border-red-700 hover:bg-red-900/60"
+                : "bg-gray-800 text-gray-300 border-gray-700 hover:text-white hover:border-gray-500"
+            }`}
+          >
+            {snapshotStatus === "loading" ? (
+              <span className="flex items-center gap-1.5">
+                <span className="animate-spin inline-block w-3 h-3 border border-gray-500 border-t-transparent rounded-full" />
+                記録中...
+              </span>
+            ) : snapshotStatus === "done" ? (
+              "✓ 記録済み"
+            ) : (
+              "今すぐ記録"
+            )}
+          </button>
+        </div>
+      </div>
+
       {/* チャンネルサマリーバー */}
       {channelStats && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
