@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAllChannelTokens } from "@/lib/channelTokenStore";
 import { getYoutubeClient } from "@/lib/getYoutubeClient";
+import { getYoutubeAnalyticsClient } from "@/lib/getYoutubeAnalyticsClient";
 import redis from "@/lib/redis";
 import { youtube_v3 } from "googleapis";
 import type { GaxiosResponseWithHTTP2 } from "googleapis-common";
@@ -18,8 +19,85 @@ export const dynamic = "force-dynamic";
 type SnapRecord = {
   views: number;
   likes: number;
+  avgViewPercent: number | null;
+  ctr: number | null;
   savedAt: string;
 };
+
+type AnalyticsRecord = { avgViewPercent: number | null; ctr: number | null };
+
+async function fetchAnalytics(
+  channelId: string,
+  videoIds: string[]
+): Promise<Map<string, AnalyticsRecord>> {
+  const map = new Map<string, AnalyticsRecord>();
+  if (!videoIds.length) return map;
+
+  const client = await getYoutubeAnalyticsClient(channelId);
+  if (!client) return map;
+
+  const today = new Date().toISOString().slice(0, 10);
+  const twoYearsAgo = new Date(Date.now() - 2 * 365 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+
+  const chunks: string[][] = [];
+  for (let i = 0; i < videoIds.length; i += 50) {
+    chunks.push(videoIds.slice(i, i + 50));
+  }
+
+  for (const chunk of chunks) {
+    const filter = chunk.join(",");
+    try {
+      const res = await client.reports.query({
+        ids: `channel==${channelId}`,
+        startDate: twoYearsAgo,
+        endDate: today,
+        dimensions: "video",
+        filters: `video==${filter}`,
+        metrics: "averageViewPercentage,impressionsClickThroughRate",
+        maxResults: 200,
+      });
+      const headers = (res.data.columnHeaders ?? []).map((h) => h.name ?? "");
+      const rows = (res.data.rows ?? []) as (string | number | null)[][];
+      const vIdx = headers.indexOf("video");
+      const rIdx = headers.indexOf("averageViewPercentage");
+      const cIdx = headers.indexOf("impressionsClickThroughRate");
+      for (const row of rows) {
+        const id = row[vIdx] as string;
+        if (!id) continue;
+        map.set(id, {
+          avgViewPercent: rIdx >= 0 && row[rIdx] != null ? (row[rIdx] as number) : null,
+          ctr: cIdx >= 0 && row[cIdx] != null ? (row[cIdx] as number) : null,
+        });
+      }
+      continue;
+    } catch { /* CTR込みが失敗したら維持率のみで再試行 */ }
+
+    try {
+      const res = await client.reports.query({
+        ids: `channel==${channelId}`,
+        startDate: twoYearsAgo,
+        endDate: today,
+        dimensions: "video",
+        filters: `video==${filter}`,
+        metrics: "averageViewPercentage",
+        maxResults: 200,
+      });
+      const headers = (res.data.columnHeaders ?? []).map((h) => h.name ?? "");
+      const rows = (res.data.rows ?? []) as (string | number | null)[][];
+      const vIdx = headers.indexOf("video");
+      const rIdx = headers.indexOf("averageViewPercentage");
+      for (const row of rows) {
+        const id = row[vIdx] as string;
+        if (!id) continue;
+        map.set(id, { avgViewPercent: rIdx >= 0 && row[rIdx] != null ? (row[rIdx] as number) : null, ctr: null });
+      }
+    } catch { /* 完全失敗は無視 */ }
+  }
+
+  return map;
+}
 
 function todayJST(): string {
   const now = new Date();
@@ -66,6 +144,8 @@ async function saveSnapshotForChannel(
   const videoIds = await fetchAllVideoIds(youtube, uploadsPlaylistId);
   if (!videoIds.length) return 0;
 
+  const analyticsMap = await fetchAnalytics(channelId, videoIds);
+
   let saved = 0;
   for (let i = 0; i < videoIds.length; i += 50) {
     const chunk = videoIds.slice(i, i + 50);
@@ -78,9 +158,12 @@ async function saveSnapshotForChannel(
     for (const item of statsRes.data.items ?? []) {
       if (!item.id) continue;
       const key = `snap:${channelId}:${item.id}:${today}`;
+      const analytics = analyticsMap.get(item.id);
       const record: SnapRecord = {
         views: Number(item.statistics?.viewCount ?? 0),
         likes: Number(item.statistics?.likeCount ?? 0),
+        avgViewPercent: analytics?.avgViewPercent ?? null,
+        ctr: analytics?.ctr ?? null,
         savedAt: new Date().toISOString(),
       };
       pipeline.set(key, JSON.stringify(record), "EX", 90 * 86400);

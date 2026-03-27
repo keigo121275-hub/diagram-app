@@ -11,6 +11,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getYoutubeClient } from "@/lib/getYoutubeClient";
+import { getYoutubeAnalyticsClient } from "@/lib/getYoutubeAnalyticsClient";
 import redis from "@/lib/redis";
 import { youtube_v3 } from "googleapis";
 import type { GaxiosResponseWithHTTP2 } from "googleapis-common";
@@ -18,7 +19,9 @@ import type { GaxiosResponseWithHTTP2 } from "googleapis-common";
 export type SnapRecord = {
   views: number;
   likes: number;
-  savedAt: string; // ISO timestamp
+  avgViewPercent: number | null; // 視聴維持率（%）
+  ctr: number | null;            // サムネタップ率（0〜1）
+  savedAt: string;
 };
 
 function todayJST(): string {
@@ -57,6 +60,98 @@ async function fetchAllVideoIds(
   return ids;
 }
 
+type AnalyticsRecord = { avgViewPercent: number | null; ctr: number | null };
+
+/**
+ * Analytics API から動画ごとの維持率・CTR を取得する。
+ * CTR が取得できない場合は null を返す（エラーは握り潰す）。
+ */
+async function fetchAnalytics(
+  channelId: string,
+  videoIds: string[]
+): Promise<Map<string, AnalyticsRecord>> {
+  const map = new Map<string, AnalyticsRecord>();
+  if (!videoIds.length) return map;
+
+  const client = await getYoutubeAnalyticsClient(channelId);
+  if (!client) return map;
+
+  const today = new Date().toISOString().slice(0, 10);
+  const twoYearsAgo = new Date(Date.now() - 2 * 365 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+
+  // 50本ずつ分けてクエリ（Analytics API の filters 上限対策）
+  const chunks: string[][] = [];
+  for (let i = 0; i < videoIds.length; i += 50) {
+    chunks.push(videoIds.slice(i, i + 50));
+  }
+
+  for (const chunk of chunks) {
+    const filter = chunk.join(",");
+
+    // ① 維持率 + CTR を同時取得（CTR が取れればラッキー）
+    try {
+      const res = await client.reports.query({
+        ids: `channel==${channelId}`,
+        startDate: twoYearsAgo,
+        endDate: today,
+        dimensions: "video",
+        filters: `video==${filter}`,
+        metrics: "averageViewPercentage,impressionsClickThroughRate",
+        maxResults: 200,
+      });
+      const headers = (res.data.columnHeaders ?? []).map((h) => h.name ?? "");
+      const rows = (res.data.rows ?? []) as (string | number | null)[][];
+      const vIdx = headers.indexOf("video");
+      const rIdx = headers.indexOf("averageViewPercentage");
+      const cIdx = headers.indexOf("impressionsClickThroughRate");
+
+      for (const row of rows) {
+        const id = row[vIdx] as string;
+        if (!id) continue;
+        map.set(id, {
+          avgViewPercent: rIdx >= 0 && row[rIdx] != null ? (row[rIdx] as number) : null,
+          ctr: cIdx >= 0 && row[cIdx] != null ? (row[cIdx] as number) : null,
+        });
+      }
+      continue; // 成功したら次チャンクへ
+    } catch {
+      // CTR 込みクエリが失敗した場合、維持率だけで再試行
+    }
+
+    // ② フォールバック: 維持率のみ
+    try {
+      const res = await client.reports.query({
+        ids: `channel==${channelId}`,
+        startDate: twoYearsAgo,
+        endDate: today,
+        dimensions: "video",
+        filters: `video==${filter}`,
+        metrics: "averageViewPercentage",
+        maxResults: 200,
+      });
+      const headers = (res.data.columnHeaders ?? []).map((h) => h.name ?? "");
+      const rows = (res.data.rows ?? []) as (string | number | null)[][];
+      const vIdx = headers.indexOf("video");
+      const rIdx = headers.indexOf("averageViewPercentage");
+
+      for (const row of rows) {
+        const id = row[vIdx] as string;
+        if (!id) continue;
+        map.set(id, {
+          avgViewPercent: rIdx >= 0 && row[rIdx] != null ? (row[rIdx] as number) : null,
+          ctr: null,
+        });
+      }
+    } catch {
+      // 完全失敗は無視（再生数だけで記録を続ける）
+    }
+  }
+
+  return map;
+}
+
 // ---------------------------------------------------------------------------
 // POST: 全動画のスナップショットを保存
 // ---------------------------------------------------------------------------
@@ -88,6 +183,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ saved: 0, skipped: 0, date: today });
     }
 
+    // Analytics データ（維持率・CTR）を取得
+    const analyticsMap = await fetchAnalytics(channelId, videoIds);
+
     // 50本ずつ分割して statistics を取得
     let saved = 0;
     let skipped = 0;
@@ -106,9 +204,12 @@ export async function POST(request: NextRequest) {
       for (const item of statsRes.data.items ?? []) {
         if (!item.id) continue;
         const key = `snap:${channelId}:${item.id}:${today}`;
+        const analytics = analyticsMap.get(item.id);
         const record: SnapRecord = {
           views: Number(item.statistics?.viewCount ?? 0),
           likes: Number(item.statistics?.likeCount ?? 0),
+          avgViewPercent: analytics?.avgViewPercent ?? null,
+          ctr: analytics?.ctr ?? null,
           savedAt: new Date().toISOString(),
         };
         // 90日間保持（TTL: 90日 × 86400秒）
