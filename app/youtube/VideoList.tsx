@@ -26,6 +26,11 @@ export default function VideoList({ channelId, uploadsPlaylistId }: Props) {
   const [analyticsUnavailable, setAnalyticsUnavailable] = useState(false);
   const [channelCtr, setChannelCtr] = useState<number | null>(null);
 
+  // 動画ごとの CTR（Reporting API から取得）
+  type VideoCtr = { videoId: string; impressions: number | null; ctr: number | null; date: string | null };
+  const [videoCtrMap, setVideoCtrMap] = useState<Map<string, VideoCtr>>(new Map());
+  const [ctrLoading, setCtrLoading] = useState(false);
+
   // 時系列タブ
   const [activeTab, setActiveTab] = useState<TimeTab>("lifetime");
   const [timeseriesMap, setTimeseriesMap] = useState<Map<string, VideoTimeseries>>(new Map());
@@ -76,7 +81,29 @@ export default function VideoList({ channelId, uploadsPlaylistId }: Props) {
       .finally(() => setLoading(false));
   }, [channelId, uploadsPlaylistId]);
 
-  // Step2: 動画一覧が揃ったらアナリティクスを取得してマージ
+  // Step2a: 動画一覧が揃ったら Reporting API の CTR を取得
+  useEffect(() => {
+    if (videos.length === 0) return;
+
+    setCtrLoading(true);
+    const videoIds = videos.map((v) => v.id).join(",");
+    const params = new URLSearchParams({ channelId, videoIds });
+
+    fetch(`/api/youtube/reporting/ctr?${params.toString()}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.ctr) {
+          const map = new Map<string, VideoCtr>(
+            (data.ctr as VideoCtr[]).map((c) => [c.videoId, c])
+          );
+          setVideoCtrMap(map);
+        }
+      })
+      .catch(() => {/* CTR 取得失敗は無視 */})
+      .finally(() => setCtrLoading(false));
+  }, [videos.length, channelId]);
+
+  // Step2b: 動画一覧が揃ったらアナリティクスを取得してマージ
   useEffect(() => {
     if (videos.length === 0) return;
 
@@ -346,6 +373,29 @@ export default function VideoList({ channelId, uploadsPlaylistId }: Props) {
                       ? retentionColor(video.avgViewPercent)
                       : undefined
                   }
+                />
+                <Stat
+                  label="インプレッション数"
+                  value={(() => {
+                    const c = videoCtrMap.get(video.id);
+                    if (ctrLoading) return "...";
+                    if (!c || c.impressions == null) return "—";
+                    return c.impressions.toLocaleString();
+                  })()}
+                />
+                <Stat
+                  label="クリック率(CTR)"
+                  value={(() => {
+                    const c = videoCtrMap.get(video.id);
+                    if (ctrLoading) return "...";
+                    if (!c || c.ctr == null) return "—";
+                    return `${(c.ctr * 100).toFixed(1)}%`;
+                  })()}
+                  highlight={(() => {
+                    const c = videoCtrMap.get(video.id);
+                    if (!c || c.ctr == null) return undefined;
+                    return ctrColor(c.ctr);
+                  })()}
                 />
               </div>
             </div>
