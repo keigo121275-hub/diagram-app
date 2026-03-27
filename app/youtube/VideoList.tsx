@@ -2,6 +2,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Video } from "@/lib/types";
+// サーバーAPIルートからimportせず、型をここで定義する
+type VideoTimeseries = {
+  videoId: string;
+  views1d:  number | null;
+  views3d:  number | null;
+  views7d:  number | null;
+  views30d: number | null;
+};
+
+type TimeTab = "lifetime" | "1d" | "3d" | "7d" | "30d";
 
 type Props = {
   channelId: string;
@@ -15,6 +25,12 @@ export default function VideoList({ channelId, uploadsPlaylistId }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [analyticsUnavailable, setAnalyticsUnavailable] = useState(false);
   const [channelCtr, setChannelCtr] = useState<number | null>(null);
+
+  // 時系列タブ
+  const [activeTab, setActiveTab] = useState<TimeTab>("lifetime");
+  const [timeseriesMap, setTimeseriesMap] = useState<Map<string, VideoTimeseries>>(new Map());
+  const [timeseriesLoading, setTimeseriesLoading] = useState(false);
+  const [timeseriesFetched, setTimeseriesFetched] = useState(false);
 
   // Step1: 動画一覧を取得
   useEffect(() => {
@@ -72,6 +88,33 @@ export default function VideoList({ channelId, uploadsPlaylistId }: Props) {
       })
       .finally(() => setAnalyticsLoading(false));
   }, [videos.length, channelId]);
+
+  // Step3: 時系列タブが選ばれたとき、初回だけAPIを叩く
+  useEffect(() => {
+    if (activeTab === "lifetime") return;  // 累計タブは既存データで表示
+    if (timeseriesFetched) return;         // すでに取得済みなら何もしない
+    if (videos.length === 0) return;
+
+    setTimeseriesLoading(true);
+    const videosParam = JSON.stringify(
+      videos.map((v) => ({ id: v.id, publishedAt: v.publishedAt }))
+    );
+    const params = new URLSearchParams({ channelId, videos: videosParam });
+
+    fetch(`/api/youtube/timeseries?${params.toString()}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.timeseries) {
+          const map = new Map<string, VideoTimeseries>(
+            data.timeseries.map((t: VideoTimeseries) => [t.videoId, t])
+          );
+          setTimeseriesMap(map);
+          setTimeseriesFetched(true);
+        }
+      })
+      .catch(() => {/* 取得失敗は無視 */})
+      .finally(() => setTimeseriesLoading(false));
+  }, [activeTab, timeseriesFetched, videos, channelId]);
 
   // チャンネル平均を計算する（動画データが揃ってから）
   const channelStats = useMemo(() => {
@@ -155,6 +198,29 @@ export default function VideoList({ channelId, uploadsPlaylistId }: Props) {
         </div>
       )}
 
+      {/* 時系列タブ */}
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
+        {(["lifetime", "1d", "3d", "7d", "30d"] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === tab
+                ? "bg-red-600 text-white"
+                : "bg-gray-800 text-gray-400 hover:text-white"
+            }`}
+          >
+            {tab === "lifetime" ? "累計" : tab === "1d" ? "1日後" : tab === "3d" ? "3日後" : tab === "7d" ? "7日後" : "1ヶ月後"}
+          </button>
+        ))}
+        {timeseriesLoading && (
+          <span className="text-xs text-gray-500 flex items-center gap-1.5">
+            <span className="animate-spin inline-block w-3 h-3 border border-gray-500 border-t-transparent rounded-full" />
+            時系列データ取得中...
+          </span>
+        )}
+      </div>
+
       <div className="flex items-center justify-between mb-5">
         <h2 className="text-lg font-semibold text-gray-300">
           最新の動画 ({videos.length}本)
@@ -195,7 +261,10 @@ export default function VideoList({ channelId, uploadsPlaylistId }: Props) {
               </p>
 
               <div className="flex flex-wrap gap-x-6 gap-y-2">
-                <Stat label="再生数" value={Number(video.viewCount).toLocaleString()} />
+                <Stat
+                  label={activeTab === "lifetime" ? "累計再生数" : `${activeTab === "1d" ? "1日後" : activeTab === "3d" ? "3日後" : activeTab === "7d" ? "7日後" : "1ヶ月後"}の再生数`}
+                  value={getTabViews(video.id, activeTab, video.viewCount, timeseriesMap, timeseriesLoading)}
+                />
                 <Stat label="高評価" value={Number(video.likeCount).toLocaleString()} />
                 <Stat
                   label="視聴維持率"
@@ -238,6 +307,22 @@ function Stat({
       <p className={`text-lg font-bold ${highlight ?? "text-white"}`}>{value}</p>
     </div>
   );
+}
+
+// タブに応じた再生数文字列を返す
+function getTabViews(
+  videoId: string,
+  tab: "lifetime" | "1d" | "3d" | "7d" | "30d",
+  viewCount: string,
+  timeseriesMap: Map<string, VideoTimeseries>,
+  loading: boolean
+): string {
+  if (tab === "lifetime") return Number(viewCount).toLocaleString();
+  if (loading) return "取得中...";
+  const ts = timeseriesMap.get(videoId);
+  if (!ts) return "—";
+  const v = tab === "1d" ? ts.views1d : tab === "3d" ? ts.views3d : tab === "7d" ? ts.views7d : ts.views30d;
+  return v != null ? v.toLocaleString() : "—";
 }
 
 // CTR の水準に応じて色をつける
