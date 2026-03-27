@@ -21,7 +21,7 @@ function jobKey(channelId: string) {
 }
 
 // ---------------------------------------------------------------------------
-// GET: 現在のジョブ一覧を返す
+// GET: 現在のジョブ一覧 + 利用可能なレポート種別を返す
 // ---------------------------------------------------------------------------
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
@@ -38,18 +38,26 @@ export async function GET(request: NextRequest) {
   const { client } = result;
 
   try {
-    const res = await client.jobs.list({});
-    const jobs = (res.data.jobs ?? []).map((j) => ({
+    const [jobsRes, typesRes] = await Promise.all([
+      client.jobs.list({}),
+      client.reportTypes.list({}),
+    ]);
+
+    const jobs = (jobsRes.data.jobs ?? []).map((j) => ({
       id: j.id,
       reportTypeId: j.reportTypeId,
       name: j.name,
       createTime: j.createTime,
     }));
 
-    // Redis に保存済みのジョブIDも確認
+    const reportTypes = (typesRes.data.reportTypes ?? []).map((t) => ({
+      id: t.id,
+      name: t.name,
+    }));
+
     const savedJobId = await redis.get(jobKey(channelId));
 
-    return NextResponse.json({ jobs, savedJobId });
+    return NextResponse.json({ jobs, savedJobId, reportTypes });
   } catch (err) {
     console.error("[Reporting/setup GET]", err);
     return NextResponse.json(
@@ -80,7 +88,7 @@ export async function POST(request: NextRequest) {
   try {
     const existingRes = await client.jobs.list({});
     const existingJob = (existingRes.data.jobs ?? []).find(
-      (j) => j.reportTypeId === "channel_traffic_source_a2"
+      (j) => j.reportTypeId === "channel_reach_basic_a1"
     );
 
     if (existingJob?.id) {
@@ -101,7 +109,7 @@ export async function POST(request: NextRequest) {
   try {
     const res = await client.jobs.create({
       requestBody: {
-        reportTypeId: "channel_traffic_source_a2",
+        reportTypeId: "channel_reach_basic_a1",
         name: "yt-analytics-tool-ctr",
       },
     });
