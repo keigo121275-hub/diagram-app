@@ -14,6 +14,7 @@ export default function ChannelSelector() {
   const [error, setError] = useState<string | null>(null);
   const [pageView, setPageView] = useState<PageView>("list");
 
+  // チャンネル一覧取得後、localStorage から前回選択を復元する
   useEffect(() => {
     fetch("/api/youtube/channels")
       .then((res) => res.json())
@@ -22,8 +23,17 @@ export default function ChannelSelector() {
           setError(data.error);
         } else {
           setChannels(data.channels);
-          // チャンネルが1件だけなら自動選択
-          if (data.channels.length === 1) {
+
+          // localStorage に保存済みの channelId があれば自動選択
+          const savedId = localStorage.getItem("yt_selected_channel");
+          const savedView = (localStorage.getItem("yt_page_view") as PageView) ?? "list";
+          if (savedId) {
+            const match = (data.channels as Channel[]).find((c) => c.id === savedId);
+            if (match) {
+              setSelected(match);
+              setPageView(savedView);
+            }
+          } else if (data.channels.length === 1) {
             setSelected(data.channels[0]);
           }
         }
@@ -31,6 +41,25 @@ export default function ChannelSelector() {
       .catch(() => setError("チャンネル一覧の取得に失敗しました"))
       .finally(() => setLoading(false));
   }, []);
+
+  function selectChannel(ch: Channel) {
+    setSelected(ch);
+    setPageView("list");
+    localStorage.setItem("yt_selected_channel", ch.id);
+    localStorage.setItem("yt_page_view", "list");
+  }
+
+  function deselectChannel() {
+    setSelected(null);
+    setPageView("list");
+    localStorage.removeItem("yt_selected_channel");
+    localStorage.removeItem("yt_page_view");
+  }
+
+  function switchView(view: PageView) {
+    setPageView(view);
+    localStorage.setItem("yt_page_view", view);
+  }
 
   if (loading) {
     return (
@@ -61,7 +90,7 @@ export default function ChannelSelector() {
         {/* channel header */}
         <div className="flex items-center gap-3 mb-5">
           <button
-            onClick={() => { setSelected(null); setPageView("list"); }}
+            onClick={deselectChannel}
             className="text-gray-400 hover:text-white text-sm transition-colors"
           >
             ← チャンネル選択に戻る
@@ -75,7 +104,7 @@ export default function ChannelSelector() {
         {/* page tabs */}
         <div className="flex gap-2 mb-6 border-b border-gray-800 pb-4">
           <button
-            onClick={() => setPageView("list")}
+            onClick={() => switchView("list")}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               pageView === "list"
                 ? "bg-red-600 text-white"
@@ -85,7 +114,7 @@ export default function ChannelSelector() {
             動画一覧
           </button>
           <button
-            onClick={() => setPageView("bottleneck")}
+            onClick={() => switchView("bottleneck")}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               pageView === "bottleneck"
                 ? "bg-red-600 text-white"
@@ -123,7 +152,7 @@ export default function ChannelSelector() {
         {channels.map((ch) => (
           <button
             key={ch.id}
-            onClick={() => setSelected(ch)}
+            onClick={() => selectChannel(ch)}
             className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex items-center gap-4 hover:border-red-500 transition-colors text-left"
           >
             {ch.thumbnail && (
