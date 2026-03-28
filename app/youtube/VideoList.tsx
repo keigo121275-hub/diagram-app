@@ -32,15 +32,22 @@ type VideoTypeTab = "all" | "short" | "long";
 type Props = {
   channelId: string;
   uploadsPlaylistId: string;
+  onVideosChange?: (videos: Video[]) => void;
 };
 
-export default function VideoList({ channelId, uploadsPlaylistId }: Props) {
+export default function VideoList({ channelId, uploadsPlaylistId, onVideosChange }: Props) {
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [analyticsUnavailable, setAnalyticsUnavailable] = useState(false);
   const [channelCtr, setChannelCtr] = useState<number | null>(null);
+
+  // videos が更新されたら親コンポーネントに通知（BottleneckView との共有用）
+  useEffect(() => {
+    if (videos.length > 0) onVideosChange?.(videos);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videos]);
 
   // 動画ごとの CTR（Reporting API から取得）
   type VideoCtr = { videoId: string; impressions: number | null; ctr: number | null; date: string | null };
@@ -142,7 +149,7 @@ export default function VideoList({ channelId, uploadsPlaylistId }: Props) {
   useEffect(() => {
     if (!channelId || !uploadsPlaylistId) return;
 
-    const CACHE_KEY = `yt_videos_cache_v2:${channelId}`;
+    const CACHE_KEY = `yt_videos_cache_v3:${channelId}`;
     const CACHE_TTL_MS = 30 * 60 * 1000; // 30分
 
     // キャッシュチェック
@@ -151,7 +158,8 @@ export default function VideoList({ channelId, uploadsPlaylistId }: Props) {
       if (raw) {
         const { videos: cached, savedAt } = JSON.parse(raw) as { videos: Video[]; savedAt: number };
         if (Date.now() - savedAt < CACHE_TTL_MS) {
-          setVideos(cached);
+          const seen = new Set<string>();
+          setVideos(cached.filter((v) => (seen.has(v.id) ? false : seen.add(v.id) && true)));
           setLoading(false);
           return; // キャッシュ有効：APIは叩かない
         }
@@ -166,10 +174,12 @@ export default function VideoList({ channelId, uploadsPlaylistId }: Props) {
         if (data.error) {
           setError(data.error);
         } else {
-          setVideos(data.videos);
-          // 取得成功したらキャッシュに保存
+          const seen = new Set<string>();
+          const unique = (data.videos as Video[]).filter((v) => (seen.has(v.id) ? false : seen.add(v.id) && true));
+          setVideos(unique);
+          // 取得成功したらキャッシュに保存（重複排除済みデータを保存）
           try {
-            localStorage.setItem(CACHE_KEY, JSON.stringify({ videos: data.videos, savedAt: Date.now() }));
+            localStorage.setItem(CACHE_KEY, JSON.stringify({ videos: unique, savedAt: Date.now() }));
           } catch { /* localStorage 容量オーバー等は無視 */ }
         }
       })

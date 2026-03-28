@@ -32,11 +32,11 @@ function getQuadrant(ctr: number | null, ret: number | null, avgCtr: number, avg
   return "all";
 }
 
-type Props = { channelId: string; uploadsPlaylistId: string };
+type Props = { channelId: string; uploadsPlaylistId: string; sharedVideos?: Video[] };
 
-export default function BottleneckView({ channelId, uploadsPlaylistId }: Props) {
-  const [videos, setVideos] = useState<Video[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function BottleneckView({ channelId, uploadsPlaylistId, sharedVideos }: Props) {
+  const [videos, setVideos] = useState<Video[]>(sharedVideos ?? []);
+  const [loading, setLoading] = useState(!(sharedVideos?.length));
   const [manualCtrMap, setManualCtrMap] = useState<Map<string, ManualCtrData>>(new Map());
   const [sortMode, setSortMode] = useState<SortMode>("priority");
   const [typeTab, setTypeTab] = useState<VideoTypeTab>("all");
@@ -44,18 +44,27 @@ export default function BottleneckView({ channelId, uploadsPlaylistId }: Props) 
   const [copied, setCopied] = useState(false);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
-  // ── fetch videos ──────────────────────────────────────────────────────────
+  // sharedVideos が後から届いた場合（BottleneckView が先にマウントされたケース）に同期
+  useEffect(() => {
+    if (sharedVideos?.length && videos.length === 0) {
+      setVideos(sharedVideos);
+      setLoading(false);
+    }
+  }, [sharedVideos, videos.length]);
+
+  // ── fetch videos（sharedVideos がない場合のフォールバック）──────────────────
   useEffect(() => {
     if (!channelId || !uploadsPlaylistId) return;
+    if (sharedVideos?.length) return; // 親から渡されていればスキップ
     const params = new URLSearchParams({ channelId, uploadsPlaylistId });
     fetch(`/api/youtube/videos?${params}`)
       .then((r) => r.json())
       .then((d) => { if (d.videos) setVideos(d.videos); })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [channelId, uploadsPlaylistId]);
+  }, [channelId, uploadsPlaylistId, sharedVideos?.length]);
 
-  // ── fetch analytics (retention) ───────────────────────────────────────────
+  // ── fetch analytics（sharedVideos がない場合のフォールバック）────────────────
   useEffect(() => {
     if (!videos.length) return;
     const params = new URLSearchParams({ channelId, videoIds: videos.map((v) => v.id).join(",") });
@@ -72,7 +81,7 @@ export default function BottleneckView({ channelId, uploadsPlaylistId }: Props) 
         );
       })
       .catch(() => {});
-  }, [videos.length, channelId]);
+  }, [videos.length, channelId, sharedVideos?.length]);
 
   // ── fetch manual CTR ──────────────────────────────────────────────────────
   useEffect(() => {

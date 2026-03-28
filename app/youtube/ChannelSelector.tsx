@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Channel } from "@/lib/types";
+import { Channel, Video } from "@/lib/types";
 import VideoList from "./VideoList";
 import BottleneckView from "./BottleneckView";
 
@@ -13,6 +13,7 @@ export default function ChannelSelector() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pageView, setPageView] = useState<PageView>("list");
+  const [sharedVideos, setSharedVideos] = useState<Video[]>([]);
 
   // チャンネル一覧取得後、localStorage から前回選択を復元する
   useEffect(() => {
@@ -45,6 +46,7 @@ export default function ChannelSelector() {
   function selectChannel(ch: Channel) {
     setSelected(ch);
     setPageView("list");
+    setSharedVideos([]);
     localStorage.setItem("yt_selected_channel", ch.id);
     localStorage.setItem("yt_page_view", "list");
   }
@@ -126,10 +128,10 @@ export default function ChannelSelector() {
         </div>
 
         {pageView === "list" && (
-          <VideoList channelId={selected.id} uploadsPlaylistId={selected.uploadsPlaylistId} />
+          <VideoList channelId={selected.id} uploadsPlaylistId={selected.uploadsPlaylistId} onVideosChange={setSharedVideos} />
         )}
         {pageView === "bottleneck" && (
-          <BottleneckView channelId={selected.id} uploadsPlaylistId={selected.uploadsPlaylistId} />
+          <BottleneckView channelId={selected.id} uploadsPlaylistId={selected.uploadsPlaylistId} sharedVideos={sharedVideos} />
         )}
       </div>
     );

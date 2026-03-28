@@ -31,16 +31,13 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // 半年前の日付（フィルター基準）
-    const cutoff = new Date();
-    cutoff.setMonth(cutoff.getMonth() - 6);
+    const MAX_VIDEOS = 200;
 
-    // nextPageToken を使って半年以内の動画IDをすべて収集
+    // nextPageToken を使って最大200本分の動画IDを収集
     const videoIds: string[] = [];
     let pageToken: string | undefined = undefined;
-    let reachedCutoff = false;
 
-    while (!reachedCutoff) {
+    while (videoIds.length < MAX_VIDEOS) {
       const listParams: {
         part: string[];
         playlistId: string;
@@ -57,18 +54,13 @@ export async function GET(request: NextRequest) {
 
       for (const item of playlistRes.data.items ?? []) {
         const id = item.contentDetails?.videoId;
-        const publishedAt = item.contentDetails?.videoPublishedAt;
         if (!id) continue;
-        // 投稿日が半年より古ければ以降は全部古いので停止
-        if (publishedAt && new Date(publishedAt) < cutoff) {
-          reachedCutoff = true;
-          break;
-        }
         videoIds.push(id);
+        if (videoIds.length >= MAX_VIDEOS) break;
       }
 
       // 次ページがなければ終了
-      if (!playlistRes.data.nextPageToken || reachedCutoff) break;
+      if (!playlistRes.data.nextPageToken || videoIds.length >= MAX_VIDEOS) break;
       pageToken = playlistRes.data.nextPageToken;
     }
 
@@ -76,10 +68,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ videos: [] });
     }
 
+    // ページネーションをまたいだ重複IDを除去
+    const uniqueVideoIds = [...new Set(videoIds)];
+
     // 50本ずつ分割して statistics / snippet / contentDetails を取得
     const allItems: youtube_v3.Schema$Video[] = [];
-    for (let i = 0; i < videoIds.length; i += 50) {
-      const chunk = videoIds.slice(i, i + 50);
+    for (let i = 0; i < uniqueVideoIds.length; i += 50) {
+      const chunk = uniqueVideoIds.slice(i, i + 50);
       const statsRes = await youtube.videos.list({
         part: ["statistics", "snippet", "contentDetails"],
         id: chunk,
