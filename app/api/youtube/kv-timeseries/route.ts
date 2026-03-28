@@ -1,10 +1,14 @@
 /**
  * KV 時系列 API
  *
- * GET /api/youtube/kv-timeseries?channelId=...&videos=[{id, publishedAt}]
- *   - Redis に保存されたスナップショットから
- *     投稿1日後・3日後・7日後・30日後の再生数を返す
- *   - スナップショットがない日付は null を返す
+ * POST /api/youtube/kv-timeseries  （推奨・モバイル向け）
+ *   Body: { channelId, videos: [{ id, publishedAt }] }
+ *   動画数が多いとき GET のクエリが URL 長制限を超え Safari 等で失敗するため POST を使う。
+ *
+ * GET /api/youtube/kv-timeseries?channelId=...&videos=[{id,publishedAt}]
+ *   後方互換・短いリスト用
+ *
+ * Redis のスナップショットから投稿1/3/7/30日後の再生数を返す（ない日は null）。
  */
 import { NextRequest, NextResponse } from "next/server";
 import redis from "@/lib/redis";
@@ -43,6 +47,58 @@ async function getViews(
   return record.views;
 }
 
+async function buildTimeseries(
+  channelId: string,
+  videoList: { id: string; publishedAt: string }[]
+): Promise<VideoTimeseries[]> {
+  return Promise.all(
+    videoList.map(async ({ id, publishedAt }) => {
+      const [views1d, views3d, views7d, views30d] = await Promise.all([
+        getViews(channelId, id, addDays(publishedAt, 1)),
+        getViews(channelId, id, addDays(publishedAt, 3)),
+        getViews(channelId, id, addDays(publishedAt, 7)),
+        getViews(channelId, id, addDays(publishedAt, 30)),
+      ]);
+      return { videoId: id, views1d, views3d, views7d, views30d };
+    })
+  );
+}
+
+export async function POST(request: NextRequest) {
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "JSON が不正です" }, { status: 400 });
+  }
+  if (!body || typeof body !== "object") {
+    return NextResponse.json({ error: "リクエストボディが不正です" }, { status: 400 });
+  }
+  const { channelId, videos } = body as {
+    channelId?: unknown;
+    videos?: unknown;
+  };
+  if (typeof channelId !== "string" || !channelId) {
+    return NextResponse.json({ error: "channelId が必要です" }, { status: 400 });
+  }
+  if (!Array.isArray(videos)) {
+    return NextResponse.json({ error: "videos は配列である必要があります" }, { status: 400 });
+  }
+  const videoList: { id: string; publishedAt: string }[] = [];
+  for (const row of videos) {
+    if (!row || typeof row !== "object") continue;
+    const r = row as { id?: unknown; publishedAt?: unknown };
+    if (typeof r.id === "string" && typeof r.publishedAt === "string") {
+      videoList.push({ id: r.id, publishedAt: r.publishedAt });
+    }
+  }
+  if (!videoList.length) {
+    return NextResponse.json({ timeseries: [] as VideoTimeseries[] });
+  }
+  const timeseries = await buildTimeseries(channelId, videoList);
+  return NextResponse.json({ timeseries });
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const channelId = searchParams.get("channelId");
@@ -62,18 +118,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "videos の形式が不正です" }, { status: 400 });
   }
 
-  // 全動画について並列で Redis を参照
-  const timeseries: VideoTimeseries[] = await Promise.all(
-    videoList.map(async ({ id, publishedAt }) => {
-      const [views1d, views3d, views7d, views30d] = await Promise.all([
-        getViews(channelId, id, addDays(publishedAt, 1)),
-        getViews(channelId, id, addDays(publishedAt, 3)),
-        getViews(channelId, id, addDays(publishedAt, 7)),
-        getViews(channelId, id, addDays(publishedAt, 30)),
-      ]);
-      return { videoId: id, views1d, views3d, views7d, views30d };
-    })
-  );
-
+  const timeseries = await buildTimeseries(channelId, videoList);
   return NextResponse.json({ timeseries });
 }

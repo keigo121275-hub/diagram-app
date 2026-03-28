@@ -273,12 +273,17 @@ export default function VideoList({ channelId, uploadsPlaylistId, onVideosChange
     if (videos.length === 0) return;
 
     setTimeseriesLoading(true);
-    const videosParam = JSON.stringify(
-      videos.map((v) => ({ id: v.id, publishedAt: v.publishedAt }))
-    );
-    const params = new URLSearchParams({ channelId, videos: videosParam });
+    const payload = {
+      channelId,
+      videos: videos.map((v) => ({ id: v.id, publishedAt: v.publishedAt })),
+    };
 
-    fetch(`/api/youtube/kv-timeseries?${params.toString()}`)
+    // POST: GET だと動画数×JSONでクエリが数万文字になり、モバイル Safari の URL 制限で落ちる
+    fetch("/api/youtube/kv-timeseries", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
       .then((res) => res.json())
       .then((data) => {
         if (data.timeseries) {
@@ -291,7 +296,7 @@ export default function VideoList({ channelId, uploadsPlaylistId, onVideosChange
       })
       .catch(() => {/* 取得失敗は無視 */})
       .finally(() => setTimeseriesLoading(false));
-  }, [activeTab, timeseriesFetched, videos, channelId]);
+  }, [activeTab, timeseriesFetched, videos.length, channelId]);
 
   // タブでフィルタした動画リスト
   const filteredVideos = useMemo(() => {
