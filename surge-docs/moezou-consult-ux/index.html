@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>もえぞうタスク｜種別運用・タスク軸／人軸 UI 案</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+  <script>mermaid.initialize({ startOnLoad: true, theme: "base", themeVariables: { primaryColor: "#eff6ff", primaryTextColor: "#1e3a8a", lineColor: "#2563eb" } });</script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "BIZ UDPGothic", sans-serif;
+      font-size: 16px;
+      line-height: 1.75;
+      color: #1e293b;
+      background: #ffffff;
+      word-break: keep-all;
+    }
+    .wrap { max-width: 880px; margin: 0 auto; padding: 48px 24px 80px; }
+    h1 {
+      font-size: clamp(1.5rem, 4vw, 1.85rem);
+      font-weight: 800;
+      color: #0f172a;
+      margin: 0 0 12px;
+      letter-spacing: -0.02em;
+    }
+    .meta { font-size: 0.9rem; color: #64748b; margin-bottom: 40px; }
+    h2 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: #1e40af;
+      margin: 48px 0 16px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #dbeafe;
+    }
+    h3 { font-size: 1.05rem; font-weight: 700; margin: 28px 0 10px; color: #334155; }
+    p { margin: 0 0 16px; }
+    ul { margin: 0 0 16px; padding-left: 1.25em; }
+    li { margin-bottom: 8px; }
+    .lead {
+      font-size: 1.05rem;
+      background: #f0f4ff;
+      border-radius: 12px;
+      padding: 20px 22px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      margin-bottom: 32px;
+      border: 1px solid #e0e7ff;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px 22px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      border: 1px solid #e2e8f0;
+    }
+    .card strong { color: #1d4ed8; }
+    .tag {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      margin-right: 6px;
+      margin-bottom: 6px;
+    }
+    .tag.red { background: #fef2f2; color: #b91c1c; }
+    .tag.amber { background: #fffbeb; color: #b45309; }
+    .tag.green { background: #ecfdf5; color: #047857; }
+    pre.ascii {
+      font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, monospace;
+      font-size: 0.78rem;
+      line-height: 1.45;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 16px 18px;
+      overflow-x: auto;
+      margin: 16px 0;
+    }
+    .mermaid { margin: 24px 0; display: flex; justify-content: center; overflow-x: auto; }
+    footer { margin-top: 48px; font-size: 0.82rem; color: #94a3b8; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>もえぞうタスク｜種別の運用（3番）と UI/UX 案</h1>
+    <p class="meta">資料用（Surge 公開）・コンサル向けダッシュボードのイメージ整理</p>
+
+    <div class="lead">
+      <strong>目的。</strong> 緊急・重要・定常の<strong>運用を助ける</strong>機能を入れたうえで、<strong>タスクごと</strong>・<strong>人（担当）ごと</strong>に見通しを良くする次の一手を検討するためのメモです。現状のカード型ダッシュボード（集計・フィルタ・担当者バッジ）を前提にしています。
+    </div>
+
+    <h2>1. 実装した「3番」（種別の運用サポート）</h2>
+    <div class="card">
+      <span class="tag">説明</span>
+      <p><strong>種別の目安。</strong> 追加・編集モーダル内で、緊急／重要／定常の使い分けのヒントを折りたたみ（details）で表示。オンボーディングと週次のすり合わせで効く。</p>
+    </div>
+    <div class="card">
+      <span class="tag amber">レビュー</span>
+      <p><strong>要レビュー。</strong> 「重要」かつ、最終更新（<code>updatedAt</code>、なければ <code>createdAt</code>）から <strong>7日以上</strong>動いていない未完了タスクを対象。ツールバーのフィルタとカード上のバッジで一覧できる。コメント投稿時に親タスクの <code>updatedAt</code> を更新し、「触った日」がレビュー判定に反映される。</p>
+    </div>
+    <div class="card">
+      <span class="tag green">定常</span>
+      <p><strong>定常の繰り返し。</strong> 定常タスクで「完了時に同内容の次タスクを作る」を有効にし、日数（例: 7）を指定。完了すると期限＋N日で新規タスクが自動作成される。詳細モーダルに一行説明を表示。</p>
+    </div>
+
+    <h2>2. タスク軸（1タスクを追いやすくする）アイデア</h2>
+    <ul>
+      <li><strong>次アクション一行。</strong> タイトル直下に「次にやること」だけを短く表示（メモと分離）。週次で「止まってる理由」が見える。</li>
+      <li><strong>タイムライン（詳細内）。</strong> 作成・編集・コメント・進捗変更を時系列で並べ、議事録→タスクの流れとつなげる。</li>
+      <li><strong>ブロック理由タグ。</strong> 「クライアント待ち」「社内確認中」などを1タップで付与。要レビューと組み合わせて優先度の再判断がしやすい。</li>
+      <li><strong>サブタスクの「今日やる」。</strong> サブタスクに「今日」マークを付け、ダッシュボード上部にミニリスト（今日の3件）を出す。</li>
+    </ul>
+
+    <h2>3. 人軸（誰のバックログかを見やすくする）アイデア</h2>
+    <ul>
+      <li><strong>メンバー別スイムレーン。</strong> 横スクロールの列＝メンバー、セル＝その人の未完了タスク。ドラッグで担当変更（将来）。現状の「全員」ドロップダウンと両立しやすい。</li>
+      <li><strong>「自分の今週」ビュー。</strong> フィルタを「自分＋期限7日以内＋未完了」にワンクリック。週次ミーティング用。</li>
+      <li><strong>負荷インジケータ。</strong> メンバー名の横に、担当件数・緊急件数・要レビュー件数の小さな数字。偏りが一目で分かる。</li>
+      <li><strong>アバターリング。</strong> カードの角に担当者の色付きイニシャル（既存）を複数表示し、共同担当を視覚化。</li>
+    </ul>
+
+    <h2>4. 情報の流れ（概念図）</h2>
+    <div class="mermaid">
+flowchart LR
+  A[議事録・メモ] --> B[タスク作成]
+  B --> C{種別}
+  C -->|緊急| D[今日中に処理]
+  C -->|重要| E[要レビュー監視]
+  C -->|定常| F[繰り返し完了→次期限]
+  E --> G[コメント・進捗で updatedAt 更新]
+  G --> H[レビューから外れる]
+    </div>
+
+    <h2>5. 画面イメージ（ワイヤー ASCII）</h2>
+    <pre class="ascii">┌─────────────────────────────────────────────────────────────┐
+│ TeamBoard / もえぞうタスク    [Dashboard] [Members]   [KE]  │
+├─────────────────────────────────────────────────────────────┤
+│ [3 Total] [1 緊急] [1 重要] [1 定常] [0 完了]                 │
+├─────────────────────────────────────────────────────────────┤
+│ フィルタ: [すべて][緊急][重要][定常][期限近い][完了][要レビュー]  メンバー▼ │
+├─────────────────────────────────────────────────────────────┤
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐         │
+│  │ 要レビュー    │  │ 重要         │  │ 定常 50%     │         │
+│  │ 会議18時      │  │ もえそうさん  │  │ 20時講座     │         │
+│  │ 👤 keigo     │  │ 👤 mio       │  │ 👤 keigo     │         │
+│  │ 本日期限      │  │ あと2日      │  │ ▼ サブ2件    │         │
+│  └──────────────┘  └──────────────┘  └──────────────┘         │
+└─────────────────────────────────────────────────────────────┘
+
+将来: メンバー別レーン
+┌──────── keigo ────────┬──────── mio ──────────┐
+│ [緊急] 会議…          │ [重要] もえそう…       │
+│ [定常] 講座…          │                       │
+└───────────────────────┴───────────────────────┘</pre>
+
+    <footer>
+      もえぞうタスク（solo-board / Firebase moezoutask）向けの整理資料。TeamBoard（別プロジェクト）とは独立。
+    </footer>
+  </div>
+</body>
+</html>
