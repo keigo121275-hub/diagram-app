@@ -1,16 +1,38 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import dynamic from "next/dynamic";
 import { Video } from "@/lib/types";
+
+// recharts は SSR 非対応のため dynamic import で読み込む
+const LineChart = dynamic(
+  () => import("recharts").then((m) => m.LineChart),
+  { ssr: false }
+);
+const Line = dynamic(
+  () => import("recharts").then((m) => m.Line),
+  { ssr: false }
+);
+const XAxis = dynamic(
+  () => import("recharts").then((m) => m.XAxis),
+  { ssr: false }
+);
+const YAxis = dynamic(
+  () => import("recharts").then((m) => m.YAxis),
+  { ssr: false }
+);
+const CartesianGrid = dynamic(
+  () => import("recharts").then((m) => m.CartesianGrid),
+  { ssr: false }
+);
+const Tooltip = dynamic(
+  () => import("recharts").then((m) => m.Tooltip),
+  { ssr: false }
+);
+const ResponsiveContainer = dynamic(
+  () => import("recharts").then((m) => m.ResponsiveContainer),
+  { ssr: false }
+);
 
 type SnapRecord = {
   views: number;
@@ -178,6 +200,23 @@ export default function VideoDetailPanel({ video, channelId, avgViews, onClose }
               <p>スナップショットがまだありません</p>
               <p className="text-xs text-gray-700">「今すぐ記録」ボタンを押すと翌日以降に表示されます</p>
             </div>
+          ) : chartData.length === 1 ? (
+            <div className="flex flex-col items-center justify-center h-48 text-gray-600 text-sm gap-2">
+              <span className="text-2xl">📊</span>
+              <p>
+                {chartData[0].date} のデータが1件あります
+              </p>
+              <div className="mt-1 text-center text-gray-500">
+                {chartTab === "views" ? (
+                  <p className="text-2xl font-bold text-white">{chartData[0].views.toLocaleString()} 再生</p>
+                ) : (
+                  <p className="text-2xl font-bold text-green-400">
+                    {chartData[0].retention != null ? `${(chartData[0].retention as number).toFixed(1)}%` : "—"}
+                  </p>
+                )}
+              </div>
+              <p className="text-xs text-gray-700 mt-1">翌日以降にデータが2件以上になるとグラフが表示されます</p>
+            </div>
           ) : (
             <ResponsiveContainer width="100%" height={240}>
               <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
@@ -239,7 +278,7 @@ export default function VideoDetailPanel({ video, channelId, avgViews, onClose }
           )}
 
           {/* スナップショット数 */}
-          {!loading && chartData.length > 0 && (
+          {!loading && chartData.length > 1 && (
             <p className="text-xs text-gray-600 mt-3 text-right">
               {chartData.length} 日分のスナップショット
             </p>
