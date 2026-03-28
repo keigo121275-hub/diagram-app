@@ -138,10 +138,27 @@ export default function VideoList({ channelId, uploadsPlaylistId }: Props) {
     }
   }
 
-  // Step1: 動画一覧を取得
+  // Step1: 動画一覧を取得（30分キャッシュ付き）
   useEffect(() => {
     if (!channelId || !uploadsPlaylistId) return;
 
+    const CACHE_KEY = `yt_videos_cache:${channelId}`;
+    const CACHE_TTL_MS = 30 * 60 * 1000; // 30分
+
+    // キャッシュチェック
+    try {
+      const raw = localStorage.getItem(CACHE_KEY);
+      if (raw) {
+        const { videos: cached, savedAt } = JSON.parse(raw) as { videos: Video[]; savedAt: number };
+        if (Date.now() - savedAt < CACHE_TTL_MS) {
+          setVideos(cached);
+          setLoading(false);
+          return; // キャッシュ有効：APIは叩かない
+        }
+      }
+    } catch { /* localStorage 読み取り失敗は無視 */ }
+
+    // キャッシュなし or 期限切れ → API を叩く
     const params = new URLSearchParams({ channelId, uploadsPlaylistId });
     fetch(`/api/youtube/videos?${params.toString()}`)
       .then((res) => res.json())
@@ -150,6 +167,10 @@ export default function VideoList({ channelId, uploadsPlaylistId }: Props) {
           setError(data.error);
         } else {
           setVideos(data.videos);
+          // 取得成功したらキャッシュに保存
+          try {
+            localStorage.setItem(CACHE_KEY, JSON.stringify({ videos: data.videos, savedAt: Date.now() }));
+          } catch { /* localStorage 容量オーバー等は無視 */ }
         }
       })
       .catch(() => setError("動画の取得に失敗しました"))

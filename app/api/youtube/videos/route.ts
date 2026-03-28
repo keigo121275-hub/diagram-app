@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getYoutubeClient } from "@/lib/getYoutubeClient";
 import { Video } from "@/lib/types";
+import type { youtube_v3 } from "googleapis";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
@@ -30,24 +31,61 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const playlistRes = await youtube.playlistItems.list({
-      part: ["contentDetails"],
-      playlistId: uploadsPlaylistId,
-      maxResults: 50,
-    });
+    // 半年前の日付（フィルター基準）
+    const cutoff = new Date();
+    cutoff.setMonth(cutoff.getMonth() - 6);
 
-    const videoIds = playlistRes.data.items
-      ?.map((item) => item.contentDetails?.videoId)
-      .filter(Boolean) as string[];
+    // nextPageToken を使って半年以内の動画IDをすべて収集
+    const videoIds: string[] = [];
+    let pageToken: string | undefined = undefined;
+    let reachedCutoff = false;
+
+    while (!reachedCutoff) {
+      const listParams: {
+        part: string[];
+        playlistId: string;
+        maxResults: number;
+        pageToken?: string;
+      } = {
+        part: ["contentDetails"],
+        playlistId: uploadsPlaylistId,
+        maxResults: 50,
+      };
+      if (pageToken) listParams.pageToken = pageToken;
+
+      const playlistRes = await youtube.playlistItems.list(listParams);
+
+      for (const item of playlistRes.data.items ?? []) {
+        const id = item.contentDetails?.videoId;
+        const publishedAt = item.contentDetails?.videoPublishedAt;
+        if (!id) continue;
+        // 投稿日が半年より古ければ以降は全部古いので停止
+        if (publishedAt && new Date(publishedAt) < cutoff) {
+          reachedCutoff = true;
+          break;
+        }
+        videoIds.push(id);
+      }
+
+      // 次ページがなければ終了
+      if (!playlistRes.data.nextPageToken || reachedCutoff) break;
+      pageToken = playlistRes.data.nextPageToken;
+    }
 
     if (!videoIds.length) {
       return NextResponse.json({ videos: [] });
     }
 
-    const statsRes = await youtube.videos.list({
-      part: ["statistics", "snippet", "contentDetails"],
-      id: videoIds,
-    });
+    // 50本ずつ分割して statistics / snippet / contentDetails を取得
+    const allItems: youtube_v3.Schema$Video[] = [];
+    for (let i = 0; i < videoIds.length; i += 50) {
+      const chunk = videoIds.slice(i, i + 50);
+      const statsRes = await youtube.videos.list({
+        part: ["statistics", "snippet", "contentDetails"],
+        id: chunk,
+      });
+      allItems.push(...(statsRes.data.items ?? []));
+    }
 
     /** ISO 8601 duration → 秒数に変換 (例: PT1M30S → 90) */
     function parseDuration(iso: string): number {
@@ -56,7 +94,7 @@ export async function GET(request: NextRequest) {
       return (parseInt(m[1] ?? "0") * 3600) + (parseInt(m[2] ?? "0") * 60) + parseInt(m[3] ?? "0");
     }
 
-    const videos: Video[] = statsRes.data.items?.map((item) => {
+    const videos: Video[] = allItems.map((item) => {
       const duration = item.contentDetails?.duration ?? "";
       const durationSec = parseDuration(duration);
       const title = item.snippet?.title ?? "";
@@ -75,8 +113,7 @@ export async function GET(request: NextRequest) {
         duration,
         isShort,
       };
-    }) ?? [];
-
+    });
     return NextResponse.json({ videos });
   } catch (err) {
     console.error("YouTube videos API error:", err);
