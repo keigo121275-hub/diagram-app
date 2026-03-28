@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { Video } from "@/lib/types";
+import { getPerformanceRank, retentionColor } from "@/lib/youtube/metrics";
 
 // recharts は SSR 非対応のため dynamic import で読み込む
 const LineChart = dynamic(
@@ -55,22 +56,6 @@ type Props = {
 };
 
 type ChartTab = "views" | "retention";
-
-// チャンネル平均再生数との比率でランクを返す
-function getPerformanceRank(viewCount: number, avgViews: number) {
-  if (avgViews === 0) return null;
-  const ratio = viewCount / avgViews;
-  if (ratio >= 5.0) return { label: "🔥 ヒット",      color: "bg-yellow-900/60 text-yellow-400 border border-yellow-700" };
-  if (ratio >= 2.0) return { label: "✓ 好調",         color: "bg-green-900/60  text-green-400  border border-green-700"  };
-  if (ratio >= 1.0) return { label: "— 普通",         color: "bg-gray-800      text-gray-400   border border-gray-700"  };
-  return              { label: "✗ 伸びなかった", color: "bg-red-900/60   text-red-400    border border-red-800"   };
-}
-
-function retentionColor(pct: number): string {
-  if (pct >= 40) return "text-green-400";
-  if (pct >= 30) return "text-yellow-400";
-  return "text-red-400";
-}
 
 export default function VideoDetailPanel({ video, channelId, avgViews, onClose }: Props) {
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);

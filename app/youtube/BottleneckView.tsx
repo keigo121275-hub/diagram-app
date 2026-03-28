@@ -2,35 +2,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Video } from "@/lib/types";
-
-type ManualCtrData = {
-  videoId: string;
-  impressions: number | null;
-  ctr: number | null;
-  updatedAt: string | null;
-  sources?: { name: string; impressions: number | null; ctr: number | null }[];
-};
-
-type SortMode = "priority" | "ctr" | "retention" | "views";
-type VideoTypeTab = "all" | "long" | "short";
-type Quadrant = "win" | "thumbnail" | "content" | "all";
-
-const QUAD_CONFIG: Record<Quadrant, { label: string; color: string; bg: string; pill: string; pillText: string }> = {
-  win:       { label: "勝ちパターン",  color: "#34d399", bg: "rgba(52,211,153,.07)",  pill: "bg-emerald-500/15 text-emerald-400", pillText: "勝ちパターン" },
-  thumbnail: { label: "サムネ改善",    color: "#fbbf24", bg: "rgba(251,191,36,.06)",  pill: "bg-amber-500/15 text-amber-400",    pillText: "サムネ改善" },
-  content:   { label: "内容改善",      color: "#60a5fa", bg: "rgba(96,165,250,.06)",  pill: "bg-blue-500/15 text-blue-400",      pillText: "内容改善" },
-  all:       { label: "全面見直し",    color: "#f87171", bg: "rgba(239,68,68,.06)",   pill: "bg-red-500/15 text-red-400",        pillText: "全面見直し" },
-};
-
-function getQuadrant(ctr: number | null, ret: number | null, avgCtr: number, avgRet: number): Quadrant {
-  if (ctr == null || ret == null) return "all";
-  const hCtr = ctr >= avgCtr;
-  const hRet = ret >= avgRet;
-  if ( hCtr &&  hRet) return "win";
-  if (!hCtr &&  hRet) return "thumbnail";
-  if ( hCtr && !hRet) return "content";
-  return "all";
-}
+import { getQuadrant, QUAD_CONFIG } from "@/lib/youtube/bottleneck";
+import { filterVideosByDurationTab } from "@/lib/youtube/filter-videos";
+import { mergeAvgViewPercentIntoVideos } from "@/lib/youtube/video-utils";
+import type {
+  BottleneckQuadrant,
+  BottleneckSortMode,
+  ManualCtrData,
+  YoutubeDurationFilterTab,
+} from "@/lib/youtube/types";
+import YoutubeLoading from "./YoutubeLoading";
 
 type Props = { channelId: string; uploadsPlaylistId: string; sharedVideos?: Video[] };
 
@@ -38,8 +19,8 @@ export default function BottleneckView({ channelId, uploadsPlaylistId, sharedVid
   const [videos, setVideos] = useState<Video[]>(sharedVideos ?? []);
   const [loading, setLoading] = useState(!(sharedVideos?.length));
   const [manualCtrMap, setManualCtrMap] = useState<Map<string, ManualCtrData>>(new Map());
-  const [sortMode, setSortMode] = useState<SortMode>("priority");
-  const [typeTab, setTypeTab] = useState<VideoTypeTab>("all");
+  const [sortMode, setSortMode] = useState<BottleneckSortMode>("priority");
+  const [typeTab, setTypeTab] = useState<YoutubeDurationFilterTab>("all");
   const [modalOpen, setModalOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
@@ -72,13 +53,7 @@ export default function BottleneckView({ channelId, uploadsPlaylistId, sharedVid
       .then((r) => r.json())
       .then((d) => {
         if (!d.analytics) return;
-        const map = new Map(d.analytics.map((a: { videoId: string; avgViewPercent: number | null }) => [a.videoId, a]));
-        setVideos((prev) =>
-          prev.map((v) => {
-            const a = map.get(v.id) as { avgViewPercent: number | null } | undefined;
-            return a ? { ...v, avgViewPercent: a.avgViewPercent } : v;
-          })
-        );
+        setVideos((prev) => mergeAvgViewPercentIntoVideos(prev, d.analytics));
       })
       .catch(() => {});
   }, [videos.length, channelId, sharedVideos?.length]);
@@ -98,11 +73,10 @@ export default function BottleneckView({ channelId, uploadsPlaylistId, sharedVid
   }, [videos.length, channelId]);
 
   // ── derived data ──────────────────────────────────────────────────────────
-  const filteredVideos = useMemo(() => {
-    if (typeTab === "long")  return videos.filter((v) => v.isShort !== true);
-    if (typeTab === "short") return videos.filter((v) => v.isShort === true);
-    return videos;
-  }, [videos, typeTab]);
+  const filteredVideos = useMemo(
+    () => filterVideosByDurationTab(videos, typeTab),
+    [videos, typeTab]
+  );
 
   const { avgCtr, avgRet } = useMemo(() => {
     const withCtr = filteredVideos.filter((v) => {
@@ -119,7 +93,11 @@ export default function BottleneckView({ channelId, uploadsPlaylistId, sharedVid
     return { avgCtr, avgRet };
   }, [filteredVideos, manualCtrMap]);
 
-  type EnrichedVideo = Video & { ctrVal: number | null; retVal: number | null; quad: Quadrant };
+  type EnrichedVideo = Video & {
+    ctrVal: number | null;
+    retVal: number | null;
+    quad: BottleneckQuadrant;
+  };
 
   const enriched: EnrichedVideo[] = useMemo(() =>
     filteredVideos.map((v) => {
@@ -131,7 +109,12 @@ export default function BottleneckView({ channelId, uploadsPlaylistId, sharedVid
   [filteredVideos, manualCtrMap, avgCtr, avgRet]);
 
   const sorted: EnrichedVideo[] = useMemo(() => {
-    const priority: Record<Quadrant, number> = { all: 0, thumbnail: 1, content: 2, win: 3 };
+    const priority: Record<BottleneckQuadrant, number> = {
+      all: 0,
+      thumbnail: 1,
+      content: 2,
+      win: 3,
+    };
     return [...enriched].sort((a, b) => {
       if (sortMode === "priority")   return priority[a.quad] - priority[b.quad];
       if (sortMode === "ctr")        return (a.ctrVal ?? 99) - (b.ctrVal ?? 99);
@@ -148,12 +131,19 @@ export default function BottleneckView({ channelId, uploadsPlaylistId, sharedVid
   function dotSize(views: number) { return 10 + (views / maxViews) * 22; }
 
   // quad counts
-  const quadCounts = useMemo(() =>
-    (["win", "thumbnail", "content", "all"] as Quadrant[]).reduce<Record<Quadrant, number>>(
-      (acc, q) => { acc[q] = enriched.filter((v) => v.quad === q).length; return acc; },
-      { win: 0, thumbnail: 0, content: 0, all: 0 }
-    ),
-  [enriched]);
+  const quadCounts = useMemo(
+    () =>
+      (["win", "thumbnail", "content", "all"] as BottleneckQuadrant[]).reduce<
+        Record<BottleneckQuadrant, number>
+      >(
+        (acc, q) => {
+          acc[q] = enriched.filter((v) => v.quad === q).length;
+          return acc;
+        },
+        { win: 0, thumbnail: 0, content: 0, all: 0 }
+      ),
+    [enriched]
+  );
 
   // copy prompt
   const copyPrompt = useMemo(() => {
@@ -164,7 +154,7 @@ export default function BottleneckView({ channelId, uploadsPlaylistId, sharedVid
       `チャンネル平均視聴維持率: ${avgRet.toFixed(1)}%`,
       "",
     ];
-    (["all", "thumbnail", "content", "win"] as Quadrant[]).forEach((q) => {
+    (["all", "thumbnail", "content", "win"] as BottleneckQuadrant[]).forEach((q) => {
       const group = sorted.filter((v) => v.quad === q);
       if (!group.length) return;
       lines.push(`【${QUAD_CONFIG[q].label}（${group.length}本）】`);
@@ -196,19 +186,14 @@ export default function BottleneckView({ channelId, uploadsPlaylistId, sharedVid
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20 text-gray-400">
-        <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-red-500 mr-3" />
-        データを取得中...
-      </div>
-    );
+    return <YoutubeLoading message="データを取得中..." size="sm" />;
   }
 
   return (
     <div>
       {/* type tabs */}
       <div className="flex gap-2 mb-6">
-        {(["all", "long", "short"] as VideoTypeTab[]).map((t) => (
+        {(["all", "long", "short"] as YoutubeDurationFilterTab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTypeTab(t)}
@@ -360,7 +345,7 @@ export default function BottleneckView({ channelId, uploadsPlaylistId, sharedVid
 
         {/* legend */}
         <div className="flex gap-5 flex-wrap mt-3">
-          {(["win", "thumbnail", "content", "all"] as Quadrant[]).map((q) => (
+          {(["win", "thumbnail", "content", "all"] as BottleneckQuadrant[]).map((q) => (
             <div key={q} className="flex items-center gap-1.5">
               <div className="w-2.5 h-2.5 rounded-full" style={{ background: QUAD_CONFIG[q].color }} />
               <span className="text-xs text-gray-500">{QUAD_CONFIG[q].label}</span>
@@ -377,7 +362,7 @@ export default function BottleneckView({ channelId, uploadsPlaylistId, sharedVid
             ["ctr",       "CTR低い順"],
             ["retention", "維持率低い順"],
             ["views",     "再生数順"],
-          ] as [SortMode, string][]).map(([mode, label]) => (
+          ] as [BottleneckSortMode, string][]).map(([mode, label]) => (
             <button
               key={mode}
               onClick={() => setSortMode(mode)}

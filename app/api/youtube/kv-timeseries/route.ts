@@ -12,14 +12,9 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import redis from "@/lib/redis";
+import type { VideoTimeseries } from "@/lib/youtube/types";
 
-export type VideoTimeseries = {
-  videoId: string;
-  views1d: number | null;
-  views3d: number | null;
-  views7d: number | null;
-  views30d: number | null;
-};
+export type { VideoTimeseries };
 
 type SnapRecord = {
   views: number;

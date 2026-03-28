@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Channel, Video } from "@/lib/types";
 import VideoList from "./VideoList";
 import BottleneckView from "./BottleneckView";
+import YoutubeLoading from "./YoutubeLoading";
 
 type PageView = "list" | "bottleneck";
 
@@ -64,12 +65,7 @@ export default function ChannelSelector() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20 text-gray-400">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500 mr-3" />
-        チャンネルを読み込み中...
-      </div>
-    );
+    return <YoutubeLoading message="チャンネルを読み込み中..." />;
   }
 
   if (error) {

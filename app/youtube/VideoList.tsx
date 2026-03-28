@@ -2,32 +2,29 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Video } from "@/lib/types";
+import { filterVideosByDurationTab } from "@/lib/youtube/filter-videos";
+import {
+  ctrColor,
+  getPerformanceRank,
+  getTabViews,
+  retentionColor,
+} from "@/lib/youtube/metrics";
+import type {
+  ManualCtrData,
+  TimeTab,
+  VideoReportingCtr,
+  VideoTimeseries,
+  YoutubeDurationFilterTab,
+} from "@/lib/youtube/types";
+import {
+  dedupeVideosById,
+  mergeAvgViewPercentIntoVideos,
+  readVideoListCache,
+  VIDEO_LIST_CACHE_TTL_MS,
+  writeVideoListCache,
+} from "@/lib/youtube/video-utils";
 import VideoDetailPanel from "./VideoDetailPanel";
-// サーバーAPIルートからimportせず、型をここで定義する
-type VideoTimeseries = {
-  videoId: string;
-  views1d:  number | null;
-  views3d:  number | null;
-  views7d:  number | null;
-  views30d: number | null;
-};
-
-type CtrData = {
-  videoId: string;
-  impressions: number | null;
-  ctr: number | null;        // Reporting API: 0〜1 の小数
-  date: string | null;
-};
-
-type ManualCtrData = {
-  videoId: string;
-  impressions: number | null;
-  ctr: number | null;        // 手動入力: 0〜100 の % 値
-  updatedAt: string | null;
-};
-
-type TimeTab = "lifetime" | "1d" | "3d" | "7d" | "30d";
-type VideoTypeTab = "all" | "short" | "long";
+import YoutubeLoading from "./YoutubeLoading";
 
 type Props = {
   channelId: string;
@@ -49,9 +46,7 @@ export default function VideoList({ channelId, uploadsPlaylistId, onVideosChange
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videos]);
 
-  // 動画ごとの CTR（Reporting API から取得）
-  type VideoCtr = { videoId: string; impressions: number | null; ctr: number | null; date: string | null };
-  const [videoCtrMap, setVideoCtrMap] = useState<Map<string, VideoCtr>>(new Map());
+  const [videoCtrMap, setVideoCtrMap] = useState<Map<string, VideoReportingCtr>>(new Map());
   const [ctrLoading, setCtrLoading] = useState(false);
 
   // 手動入力 CTR
@@ -79,7 +74,7 @@ export default function VideoList({ channelId, uploadsPlaylistId, onVideosChange
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
 
   // ショート/長尺タブ
-  const [videoTypeTab, setVideoTypeTab] = useState<VideoTypeTab>("all");
+  const [videoTypeTab, setVideoTypeTab] = useState<YoutubeDurationFilterTab>("all");
 
   function openEdit(video: Video) {
     const manual = manualCtrMap.get(video.id);
@@ -149,24 +144,13 @@ export default function VideoList({ channelId, uploadsPlaylistId, onVideosChange
   useEffect(() => {
     if (!channelId || !uploadsPlaylistId) return;
 
-    const CACHE_KEY = `yt_videos_cache_v3:${channelId}`;
-    const CACHE_TTL_MS = 30 * 60 * 1000; // 30分
+    const cached = readVideoListCache(channelId);
+    if (cached && Date.now() - cached.savedAt < VIDEO_LIST_CACHE_TTL_MS) {
+      setVideos(dedupeVideosById(cached.videos));
+      setLoading(false);
+      return;
+    }
 
-    // キャッシュチェック
-    try {
-      const raw = localStorage.getItem(CACHE_KEY);
-      if (raw) {
-        const { videos: cached, savedAt } = JSON.parse(raw) as { videos: Video[]; savedAt: number };
-        if (Date.now() - savedAt < CACHE_TTL_MS) {
-          const seen = new Set<string>();
-          setVideos(cached.filter((v) => (seen.has(v.id) ? false : seen.add(v.id) && true)));
-          setLoading(false);
-          return; // キャッシュ有効：APIは叩かない
-        }
-      }
-    } catch { /* localStorage 読み取り失敗は無視 */ }
-
-    // キャッシュなし or 期限切れ → API を叩く
     const params = new URLSearchParams({ channelId, uploadsPlaylistId });
     fetch(`/api/youtube/videos?${params.toString()}`)
       .then((res) => res.json())
@@ -174,13 +158,9 @@ export default function VideoList({ channelId, uploadsPlaylistId, onVideosChange
         if (data.error) {
           setError(data.error);
         } else {
-          const seen = new Set<string>();
-          const unique = (data.videos as Video[]).filter((v) => (seen.has(v.id) ? false : seen.add(v.id) && true));
+          const unique = dedupeVideosById(data.videos as Video[]);
           setVideos(unique);
-          // 取得成功したらキャッシュに保存（重複排除済みデータを保存）
-          try {
-            localStorage.setItem(CACHE_KEY, JSON.stringify({ videos: unique, savedAt: Date.now() }));
-          } catch { /* localStorage 容量オーバー等は無視 */ }
+          writeVideoListCache(channelId, unique);
         }
       })
       .catch(() => setError("動画の取得に失敗しました"))
@@ -199,8 +179,8 @@ export default function VideoList({ channelId, uploadsPlaylistId, onVideosChange
       .then((res) => res.json())
       .then((data) => {
         if (data.ctr) {
-          const map = new Map<string, VideoCtr>(
-            (data.ctr as VideoCtr[]).map((c) => [c.videoId, c])
+          const map = new Map<string, VideoReportingCtr>(
+            (data.ctr as VideoReportingCtr[]).map((c) => [c.videoId, c])
           );
           setVideoCtrMap(map);
         }
@@ -246,17 +226,8 @@ export default function VideoList({ channelId, uploadsPlaylistId, onVideosChange
           setChannelCtr(data.channelCtr);
         }
         if (data.analytics) {
-          const analyticsMap = new Map(
-            data.analytics.map((a: { videoId: string; avgViewPercent: number | null }) => [
-              a.videoId,
-              a,
-            ])
-          );
           setVideos((prev) =>
-            prev.map((v) => {
-              const a = analyticsMap.get(v.id) as { avgViewPercent: number | null } | undefined;
-              return a ? { ...v, avgViewPercent: a.avgViewPercent } : v;
-            })
+            mergeAvgViewPercentIntoVideos(prev, data.analytics)
           );
         }
       })
@@ -299,11 +270,10 @@ export default function VideoList({ channelId, uploadsPlaylistId, onVideosChange
   }, [activeTab, timeseriesFetched, videos.length, channelId]);
 
   // タブでフィルタした動画リスト
-  const filteredVideos = useMemo(() => {
-    if (videoTypeTab === "short") return videos.filter((v) => v.isShort === true);
-    if (videoTypeTab === "long")  return videos.filter((v) => v.isShort !== true);
-    return videos;
-  }, [videos, videoTypeTab]);
+  const filteredVideos = useMemo(
+    () => filterVideosByDurationTab(videos, videoTypeTab),
+    [videos, videoTypeTab]
+  );
 
   // チャンネル平均を計算する（フィルタ後の動画で計算）
   const channelStats = useMemo(() => {
@@ -329,12 +299,7 @@ export default function VideoList({ channelId, uploadsPlaylistId, onVideosChange
   }, [filteredVideos]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20 text-gray-400">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500 mr-3" />
-        動画を読み込み中...
-      </div>
-    );
+    return <YoutubeLoading message="動画を読み込み中..." />;
   }
 
   if (error) {
@@ -391,7 +356,7 @@ export default function VideoList({ channelId, uploadsPlaylistId, onVideosChange
           { key: "all",   label: "すべて" },
           { key: "short", label: "ショート" },
           { key: "long",  label: "長尺" },
-        ] as { key: VideoTypeTab; label: string }[]).map(({ key, label }) => {
+        ] as { key: YoutubeDurationFilterTab; label: string }[]).map(({ key, label }) => {
           const count =
             key === "all"   ? videos.length :
             key === "short" ? videos.filter((v) => v.isShort === true).length :
@@ -671,49 +636,6 @@ function Stat({
       {sub && <p className="text-xs text-yellow-600 mt-0.5">{sub}</p>}
     </div>
   );
-}
-
-// タブに応じた再生数文字列を返す
-function getTabViews(
-  videoId: string,
-  tab: "lifetime" | "1d" | "3d" | "7d" | "30d",
-  viewCount: string,
-  timeseriesMap: Map<string, VideoTimeseries>,
-  loading: boolean
-): string {
-  if (tab === "lifetime") return Number(viewCount).toLocaleString();
-  if (loading) return "取得中...";
-  const ts = timeseriesMap.get(videoId);
-  if (!ts) return "—";
-  const v = tab === "1d" ? ts.views1d : tab === "3d" ? ts.views3d : tab === "7d" ? ts.views7d : ts.views30d;
-  return v != null ? v.toLocaleString() : "—";
-}
-
-// CTR の水準に応じて色をつける
-// 業界平均: 2〜10%。4%以上で良好とする
-function ctrColor(ctr: number): string {
-  const pct = ctr * 100;
-  if (pct >= 6) return "text-green-400";
-  if (pct >= 4) return "text-yellow-400";
-  return "text-red-400";
-}
-
-// 視聴維持率の水準に応じて色をつける
-// 40%以上で良好とする
-function retentionColor(pct: number): string {
-  if (pct >= 40) return "text-green-400";
-  if (pct >= 30) return "text-yellow-400";
-  return "text-red-400";
-}
-
-// チャンネル平均再生数との比率でパフォーマンスランクを判定する
-function getPerformanceRank(viewCount: number, avgViews: number) {
-  if (avgViews === 0) return null;
-  const ratio = viewCount / avgViews;
-  if (ratio >= 5.0) return { label: "🔥 ヒット",      color: "bg-yellow-900/60 text-yellow-400 border border-yellow-700" };
-  if (ratio >= 2.0) return { label: "✓ 好調",         color: "bg-green-900/60  text-green-400  border border-green-700"  };
-  if (ratio >= 1.0) return { label: "— 普通",         color: "bg-gray-800      text-gray-400   border border-gray-700"  };
-  return              { label: "✗ 伸びなかった", color: "bg-red-900/60   text-red-400    border border-red-800"   };
 }
 
 function PerformanceBadge({ viewCount, avgViews }: { viewCount: number; avgViews: number }) {
