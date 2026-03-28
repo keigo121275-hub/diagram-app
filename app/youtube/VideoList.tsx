@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Video } from "@/lib/types";
+import VideoDetailPanel from "./VideoDetailPanel";
 // サーバーAPIルートからimportせず、型をここで定義する
 type VideoTimeseries = {
   videoId: string;
@@ -42,6 +43,9 @@ export default function VideoList({ channelId, uploadsPlaylistId }: Props) {
     "idle" | "loading" | "done" | "error"
   >("idle");
   const [snapshotResult, setSnapshotResult] = useState<string | null>(null);
+
+  // 動画詳細パネル
+  const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
 
   async function handleSnapshot() {
     if (snapshotStatus === "loading") return;
@@ -333,7 +337,8 @@ export default function VideoList({ channelId, uploadsPlaylistId }: Props) {
         {videos.map((video) => (
           <div
             key={video.id}
-            className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex gap-4 hover:border-gray-600 transition-colors"
+            onClick={() => setSelectedVideo(video)}
+            className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex gap-4 hover:border-gray-600 transition-colors cursor-pointer"
           >
             <img
               src={video.thumbnail}
@@ -402,6 +407,14 @@ export default function VideoList({ channelId, uploadsPlaylistId }: Props) {
           </div>
         ))}
       </div>
+
+      {/* 動画詳細パネル */}
+      <VideoDetailPanel
+        video={selectedVideo}
+        channelId={channelId}
+        avgViews={channelStats?.avgViews ?? 0}
+        onClose={() => setSelectedVideo(null)}
+      />
     </div>
   );
 }
