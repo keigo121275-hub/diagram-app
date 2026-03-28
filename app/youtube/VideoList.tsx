@@ -12,6 +12,20 @@ type VideoTimeseries = {
   views30d: number | null;
 };
 
+type CtrData = {
+  videoId: string;
+  impressions: number | null;
+  ctr: number | null;        // Reporting API: 0〜1 の小数
+  date: string | null;
+};
+
+type ManualCtrData = {
+  videoId: string;
+  impressions: number | null;
+  ctr: number | null;        // 手動入力: 0〜100 の % 値
+  updatedAt: string | null;
+};
+
 type TimeTab = "lifetime" | "1d" | "3d" | "7d" | "30d";
 type VideoTypeTab = "all" | "short" | "long";
 
@@ -33,6 +47,15 @@ export default function VideoList({ channelId, uploadsPlaylistId }: Props) {
   const [videoCtrMap, setVideoCtrMap] = useState<Map<string, VideoCtr>>(new Map());
   const [ctrLoading, setCtrLoading] = useState(false);
 
+  // 手動入力 CTR
+  const [manualCtrMap, setManualCtrMap] = useState<Map<string, ManualCtrData>>(new Map());
+
+  // 手動入力フォームの状態
+  const [editingVideoId, setEditingVideoId] = useState<string | null>(null);
+  const [editCtr, setEditCtr] = useState("");
+  const [editImpressions, setEditImpressions] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
+
   // 時系列タブ
   const [activeTab, setActiveTab] = useState<TimeTab>("lifetime");
   const [timeseriesMap, setTimeseriesMap] = useState<Map<string, VideoTimeseries>>(new Map());
@@ -50,6 +73,50 @@ export default function VideoList({ channelId, uploadsPlaylistId }: Props) {
 
   // ショート/長尺タブ
   const [videoTypeTab, setVideoTypeTab] = useState<VideoTypeTab>("all");
+
+  function openEdit(video: Video) {
+    const manual = manualCtrMap.get(video.id);
+    setEditCtr(manual?.ctr != null ? String(manual.ctr) : "");
+    setEditImpressions(manual?.impressions != null ? String(manual.impressions) : "");
+    setEditingVideoId(video.id);
+  }
+
+  async function handleEditSave(videoId: string) {
+    setEditSaving(true);
+    const ctrVal = editCtr !== "" ? parseFloat(editCtr) : null;
+    const impVal = editImpressions !== "" ? parseInt(editImpressions.replace(/,/g, "")) : null;
+    try {
+      const res = await fetch("/api/youtube/manual-ctr", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channelId, videoId, ctr: ctrVal, impressions: impVal }),
+      });
+      if (res.ok) {
+        setManualCtrMap((prev) => {
+          const next = new Map(prev);
+          next.set(videoId, { videoId, ctr: ctrVal, impressions: impVal, updatedAt: new Date().toISOString() });
+          return next;
+        });
+        setEditingVideoId(null);
+      }
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
+  async function handleEditDelete(videoId: string) {
+    await fetch("/api/youtube/manual-ctr", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ channelId, videoId }),
+    });
+    setManualCtrMap((prev) => {
+      const next = new Map(prev);
+      next.set(videoId, { videoId, ctr: null, impressions: null, updatedAt: null });
+      return next;
+    });
+    setEditingVideoId(null);
+  }
 
   async function handleSnapshot() {
     if (snapshotStatus === "loading") return;
@@ -109,6 +176,24 @@ export default function VideoList({ channelId, uploadsPlaylistId }: Props) {
       })
       .catch(() => {/* CTR 取得失敗は無視 */})
       .finally(() => setCtrLoading(false));
+  }, [videos.length, channelId]);
+
+  // Step2a-2: 手動入力 CTR を取得
+  useEffect(() => {
+    if (videos.length === 0) return;
+    const videoIds = videos.map((v) => v.id).join(",");
+    const params = new URLSearchParams({ channelId, videoIds });
+    fetch(`/api/youtube/manual-ctr?${params.toString()}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.manual) {
+          const map = new Map<string, ManualCtrData>(
+            (data.manual as ManualCtrData[]).map((m) => [m.videoId, m])
+          );
+          setManualCtrMap(map);
+        }
+      })
+      .catch(() => {});
   }, [videos.length, channelId]);
 
   // Step2b: 動画一覧が揃ったらアナリティクスを取得してマージ
@@ -424,27 +509,96 @@ export default function VideoList({ channelId, uploadsPlaylistId }: Props) {
                 <Stat
                   label="インプレッション数"
                   value={(() => {
+                    const manual = manualCtrMap.get(video.id);
+                    if (manual?.impressions != null) return manual.impressions.toLocaleString();
                     const c = videoCtrMap.get(video.id);
                     if (ctrLoading) return "...";
                     if (!c || c.impressions == null) return "—";
                     return c.impressions.toLocaleString();
                   })()}
+                  sub={manualCtrMap.get(video.id)?.impressions != null ? "手動" : undefined}
                 />
                 <Stat
                   label="クリック率(CTR)"
                   value={(() => {
+                    const manual = manualCtrMap.get(video.id);
+                    if (manual?.ctr != null) return `${manual.ctr.toFixed(1)}%`;
                     const c = videoCtrMap.get(video.id);
                     if (ctrLoading) return "...";
                     if (!c || c.ctr == null) return "—";
                     return `${(c.ctr * 100).toFixed(1)}%`;
                   })()}
                   highlight={(() => {
+                    const manual = manualCtrMap.get(video.id);
+                    if (manual?.ctr != null) return ctrColor(manual.ctr / 100);
                     const c = videoCtrMap.get(video.id);
                     if (!c || c.ctr == null) return undefined;
                     return ctrColor(c.ctr);
                   })()}
+                  sub={manualCtrMap.get(video.id)?.ctr != null ? "手動" : undefined}
                 />
               </div>
+
+              {/* 手動入力フォーム */}
+              {editingVideoId === video.id ? (
+                <div className="mt-3 p-3 bg-gray-800 rounded-lg border border-gray-700 flex flex-wrap gap-3 items-end">
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">CTR (%)</p>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="100"
+                      value={editCtr}
+                      onChange={(e) => setEditCtr(e.target.value)}
+                      placeholder="例: 5.3"
+                      className="w-24 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-red-500"
+                      autoFocus
+                    />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">インプレッション数</p>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editImpressions}
+                      onChange={(e) => setEditImpressions(e.target.value)}
+                      placeholder="例: 16974"
+                      className="w-32 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-red-500"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleEditSave(video.id)}
+                      disabled={editSaving}
+                      className="text-xs px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                    >
+                      {editSaving ? "保存中..." : "保存"}
+                    </button>
+                    {manualCtrMap.get(video.id)?.ctr != null && (
+                      <button
+                        onClick={() => handleEditDelete(video.id)}
+                        className="text-xs px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors"
+                      >
+                        削除
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setEditingVideoId(null)}
+                      className="text-xs px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors"
+                    >
+                      キャンセル
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={(e) => { e.stopPropagation(); openEdit(video); }}
+                  className="mt-2 text-xs text-gray-600 hover:text-gray-400 transition-colors flex items-center gap-1"
+                >
+                  CTR / インプレッション数を手動入力
+                </button>
+              )}
             </div>
           </div>
         ))}
@@ -465,15 +619,18 @@ function Stat({
   label,
   value,
   highlight,
+  sub,
 }: {
   label: string;
   value: string;
   highlight?: string;
+  sub?: string;
 }) {
   return (
     <div>
       <p className="text-xs text-gray-500">{label}</p>
       <p className={`text-lg font-bold ${highlight ?? "text-white"}`}>{value}</p>
+      {sub && <p className="text-xs text-yellow-600 mt-0.5">{sub}</p>}
     </div>
   );
 }
