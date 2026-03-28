@@ -119,23 +119,31 @@ export default function BottleneckView({ channelId, uploadsPlaylistId, sharedVid
       .finally(() => setLoading(false));
   }, [channelId, uploadsPlaylistId, sharedVideos?.length]);
 
-  // ── fetch analytics ──────────────────────────────────────────────────────
+  // ── fetch analytics（50本ずつ分割して送る）────────────────────────────
   useEffect(() => {
     if (!videos.length) return;
-    const params = new URLSearchParams({ channelId, videoIds: videos.map((v) => v.id).join(",") });
-    fetch(`/api/youtube/analytics?${params}`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (!d.analytics) return;
-        const map = new Map(d.analytics.map((a: { videoId: string; avgViewPercent: number | null }) => [a.videoId, a]));
-        setVideos((prev) =>
-          prev.map((v) => {
-            const a = map.get(v.id) as { avgViewPercent: number | null } | undefined;
-            return a ? { ...v, avgViewPercent: a.avgViewPercent } : v;
-          })
-        );
+    const CHUNK = 50;
+    const ids = videos.map((v) => v.id);
+    const chunks: string[][] = [];
+    for (let i = 0; i < ids.length; i += CHUNK) chunks.push(ids.slice(i, i + CHUNK));
+
+    Promise.all(
+      chunks.map((chunk) => {
+        const params = new URLSearchParams({ channelId, videoIds: chunk.join(",") });
+        return fetch(`/api/youtube/analytics?${params}`)
+          .then((r) => r.json())
+          .then((d) => (d.analytics ?? []) as { videoId: string; avgViewPercent: number | null }[])
+          .catch(() => [] as { videoId: string; avgViewPercent: number | null }[]);
       })
-      .catch(() => {});
+    ).then((results) => {
+      const map = new Map(results.flat().map((a) => [a.videoId, a]));
+      setVideos((prev) =>
+        prev.map((v) => {
+          const a = map.get(v.id);
+          return a ? { ...v, avgViewPercent: a.avgViewPercent } : v;
+        })
+      );
+    });
   }, [videos.length, channelId, sharedVideos?.length]);
 
   // ── fetch manual CTR ──────────────────────────────────────────────────────

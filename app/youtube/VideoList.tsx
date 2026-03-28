@@ -227,43 +227,45 @@ export default function VideoList({ channelId, uploadsPlaylistId, onVideosChange
       .catch(() => {});
   }, [videos.length, channelId]);
 
-  // Step2b: 動画一覧が揃ったらアナリティクスを取得してマージ
+  // Step2b: 動画一覧が揃ったらアナリティクスを取得してマージ（50本ずつ分割）
   useEffect(() => {
     if (videos.length === 0) return;
 
     setAnalyticsLoading(true);
-    const videoIds = videos.map((v) => v.id).join(",");
-    const params = new URLSearchParams({ channelId, videoIds });
+    const CHUNK = 50;
+    const ids = videos.map((v) => v.id);
+    const chunks: string[][] = [];
+    for (let i = 0; i < ids.length; i += CHUNK) chunks.push(ids.slice(i, i + CHUNK));
 
-    fetch(`/api/youtube/analytics?${params.toString()}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.forbidden) {
-          setAnalyticsUnavailable(true);
-          return;
-        }
-        if (data.channelCtr != null) {
-          setChannelCtr(data.channelCtr);
-        }
-        if (data.analytics) {
-          const analyticsMap = new Map(
-            data.analytics.map((a: { videoId: string; avgViewPercent: number | null }) => [
-              a.videoId,
-              a,
-            ])
-          );
-          setVideos((prev) =>
-            prev.map((v) => {
-              const a = analyticsMap.get(v.id) as { avgViewPercent: number | null } | undefined;
-              return a ? { ...v, avgViewPercent: a.avgViewPercent } : v;
-            })
-          );
-        }
+    Promise.all(
+      chunks.map((chunk) => {
+        const params = new URLSearchParams({ channelId, videoIds: chunk.join(",") });
+        return fetch(`/api/youtube/analytics?${params.toString()}`)
+          .then((res) => res.json())
+          .catch(() => ({}));
       })
-      .catch(() => {
-        // アナリティクス取得失敗は無視（基本データは表示する）
-      })
-      .finally(() => setAnalyticsLoading(false));
+    ).then((results) => {
+      // 最初のチャンクからチャンネルCTRを取得
+      const first = results[0] ?? {};
+      if (first.forbidden) { setAnalyticsUnavailable(true); return; }
+      if (first.channelCtr != null) setChannelCtr(first.channelCtr);
+
+      const analyticsMap = new Map(
+        results.flatMap((d) =>
+          (d.analytics ?? []).map((a: { videoId: string; avgViewPercent: number | null }) => [a.videoId, a])
+        )
+      );
+      if (analyticsMap.size > 0) {
+        setVideos((prev) =>
+          prev.map((v) => {
+            const a = analyticsMap.get(v.id) as { avgViewPercent: number | null } | undefined;
+            return a ? { ...v, avgViewPercent: a.avgViewPercent } : v;
+          })
+        );
+      }
+    })
+    .catch(() => {})
+    .finally(() => setAnalyticsLoading(false));
   }, [videos.length, channelId]);
 
   // Step3: 時系列タブが選ばれたとき、初回だけAPIを叩く
