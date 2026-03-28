@@ -59,9 +59,12 @@ export async function GET(request: NextRequest) {
     const videos: Video[] = statsRes.data.items?.map((item) => {
       const duration = item.contentDetails?.duration ?? "";
       const durationSec = parseDuration(duration);
+      const title = item.snippet?.title ?? "";
+      // ショート判定: 60秒以下 OR タイトル/説明に #shorts タグ（YouTube の3分ショート対応）
+      const hasShortTag = /#shorts/i.test(title) || /#shorts/i.test(item.snippet?.description ?? "");
       return {
         id: item.id ?? "",
-        title: item.snippet?.title ?? "",
+        title,
         thumbnail:
           item.snippet?.thumbnails?.medium?.url ??
           item.snippet?.thumbnails?.default?.url ??
@@ -70,7 +73,7 @@ export async function GET(request: NextRequest) {
         viewCount: item.statistics?.viewCount ?? "0",
         likeCount: item.statistics?.likeCount ?? "0",
         duration,
-        isShort: durationSec > 0 && durationSec <= 60,
+        isShort: hasShortTag || (durationSec > 0 && durationSec <= 60),
       };
     }) ?? [];
 
