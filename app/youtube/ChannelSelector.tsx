@@ -3,12 +3,16 @@
 import { useEffect, useState } from "react";
 import { Channel } from "@/lib/types";
 import VideoList from "./VideoList";
+import BottleneckView from "./BottleneckView";
+
+type PageView = "list" | "bottleneck";
 
 export default function ChannelSelector() {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [selected, setSelected] = useState<Channel | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pageView, setPageView] = useState<PageView>("list");
 
   useEffect(() => {
     fetch("/api/youtube/channels")
@@ -54,9 +58,10 @@ export default function ChannelSelector() {
   if (selected) {
     return (
       <div>
-        <div className="flex items-center gap-3 mb-6">
+        {/* channel header */}
+        <div className="flex items-center gap-3 mb-5">
           <button
-            onClick={() => setSelected(null)}
+            onClick={() => { setSelected(null); setPageView("list"); }}
             className="text-gray-400 hover:text-white text-sm transition-colors"
           >
             ← チャンネル選択に戻る
@@ -66,7 +71,37 @@ export default function ChannelSelector() {
           )}
           <span className="font-semibold text-white">{selected.name}</span>
         </div>
-        <VideoList channelId={selected.id} uploadsPlaylistId={selected.uploadsPlaylistId} />
+
+        {/* page tabs */}
+        <div className="flex gap-2 mb-6 border-b border-gray-800 pb-4">
+          <button
+            onClick={() => setPageView("list")}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              pageView === "list"
+                ? "bg-red-600 text-white"
+                : "bg-gray-800 text-gray-400 hover:text-white"
+            }`}
+          >
+            動画一覧
+          </button>
+          <button
+            onClick={() => setPageView("bottleneck")}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              pageView === "bottleneck"
+                ? "bg-red-600 text-white"
+                : "bg-gray-800 text-gray-400 hover:text-white"
+            }`}
+          >
+            ボトルネック分析
+          </button>
+        </div>
+
+        {pageView === "list" && (
+          <VideoList channelId={selected.id} uploadsPlaylistId={selected.uploadsPlaylistId} />
+        )}
+        {pageView === "bottleneck" && (
+          <BottleneckView channelId={selected.id} uploadsPlaylistId={selected.uploadsPlaylistId} />
+        )}
       </div>
     );
   }
