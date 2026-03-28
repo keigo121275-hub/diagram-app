@@ -60,8 +60,8 @@ export async function GET(request: NextRequest) {
       const duration = item.contentDetails?.duration ?? "";
       const durationSec = parseDuration(duration);
       const title = item.snippet?.title ?? "";
-      // ショート判定: 60秒以下 OR タイトル/説明に #shorts タグ（YouTube の3分ショート対応）
-      const hasShortTag = /#shorts/i.test(title) || /#shorts/i.test(item.snippet?.description ?? "");
+      // ショート判定: 3分（180秒）以下
+      const isShort = durationSec > 0 && durationSec <= 180;
       return {
         id: item.id ?? "",
         title,
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
         viewCount: item.statistics?.viewCount ?? "0",
         likeCount: item.statistics?.likeCount ?? "0",
         duration,
-        isShort: hasShortTag || (durationSec > 0 && durationSec <= 60),
+        isShort,
       };
     }) ?? [];
 
