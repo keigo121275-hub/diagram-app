@@ -77,6 +77,50 @@ export default function VideoDetailPanel({ video, channelId, avgViews, onClose }
   const [loading, setLoading] = useState(false);
   const [chartTab, setChartTab] = useState<ChartTab>("views");
 
+  // スクショ解析
+  const [screenshotUploading, setScreenshotUploading] = useState(false);
+  const [screenshotResult, setScreenshotResult] = useState<{
+    totalImpressions: number | null;
+    totalCtr: number | null;
+    totalViews: number | null;
+    avgViewPercent: number | null;
+    sources: { name: string; impressions: number | null; ctr: number | null; views: number | null; avgViewPercent: number | null }[];
+  } | null>(null);
+  const [screenshotError, setScreenshotError] = useState<string | null>(null);
+
+  async function handleScreenshotUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !video) return;
+
+    setScreenshotUploading(true);
+    setScreenshotError(null);
+    setScreenshotResult(null);
+
+    const formData = new FormData();
+    formData.append("image", file);
+    formData.append("channelId", channelId);
+    formData.append("videoId", video.id);
+
+    try {
+      const res = await fetch("/api/youtube/parse-screenshot", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setScreenshotError(data.error ?? "解析に失敗しました");
+      } else {
+        setScreenshotResult(data.extracted);
+      }
+    } catch {
+      setScreenshotError("通信エラーが発生しました");
+    } finally {
+      setScreenshotUploading(false);
+      // ファイル入力をリセット
+      e.target.value = "";
+    }
+  }
+
   useEffect(() => {
     if (!video) return;
     setSnapshots([]);
@@ -155,6 +199,102 @@ export default function VideoDetailPanel({ video, channelId, avgViews, onClose }
           >
             ✕
           </button>
+        </div>
+
+        {/* スクショ取り込み */}
+        <div className="p-5 border-b border-gray-800">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-300">YouTube Studio から取り込む</h3>
+            <label className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors cursor-pointer border ${
+              screenshotUploading
+                ? "bg-gray-800 text-gray-500 border-gray-700 cursor-not-allowed"
+                : "bg-gray-800 text-gray-300 border-gray-700 hover:text-white hover:border-gray-500"
+            }`}>
+              {screenshotUploading ? (
+                <span className="flex items-center gap-1.5">
+                  <span className="animate-spin inline-block w-3 h-3 border border-gray-500 border-t-transparent rounded-full" />
+                  解析中...
+                </span>
+              ) : "スクショをアップロード"}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                disabled={screenshotUploading}
+                onChange={handleScreenshotUpload}
+              />
+            </label>
+          </div>
+
+          {screenshotError && (
+            <p className="text-xs text-red-400 mb-2">{screenshotError}</p>
+          )}
+
+          {screenshotResult && (
+            <div className="space-y-2">
+              {/* 合計行 */}
+              <div className="grid grid-cols-4 gap-2 text-center bg-gray-900 rounded-lg p-3">
+                <div>
+                  <p className="text-xs text-gray-500">インプレッション</p>
+                  <p className="text-sm font-bold text-white">
+                    {screenshotResult.totalImpressions?.toLocaleString() ?? "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">CTR</p>
+                  <p className="text-sm font-bold text-white">
+                    {screenshotResult.totalCtr != null ? `${screenshotResult.totalCtr}%` : "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">視聴回数</p>
+                  <p className="text-sm font-bold text-white">
+                    {screenshotResult.totalViews?.toLocaleString() ?? "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">平均視聴率</p>
+                  <p className="text-sm font-bold text-white">
+                    {screenshotResult.avgViewPercent != null ? `${screenshotResult.avgViewPercent}%` : "—"}
+                  </p>
+                </div>
+              </div>
+
+              {/* ソース別 */}
+              {screenshotResult.sources.length > 0 && (
+                <div className="rounded-lg overflow-hidden border border-gray-800">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-gray-900 text-gray-500">
+                        <th className="text-left px-3 py-2 font-normal">ソース</th>
+                        <th className="text-right px-3 py-2 font-normal">インプ</th>
+                        <th className="text-right px-3 py-2 font-normal">CTR</th>
+                        <th className="text-right px-3 py-2 font-normal">再生数</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {screenshotResult.sources.map((s, i) => (
+                        <tr key={i} className="border-t border-gray-800">
+                          <td className="px-3 py-2 text-gray-300">{s.name}</td>
+                          <td className="px-3 py-2 text-right text-gray-400">{s.impressions?.toLocaleString() ?? "—"}</td>
+                          <td className="px-3 py-2 text-right text-gray-400">{s.ctr != null ? `${s.ctr}%` : "—"}</td>
+                          <td className="px-3 py-2 text-right text-gray-400">{s.views?.toLocaleString() ?? "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <p className="text-xs text-green-500">保存しました（動画一覧にも反映されます）</p>
+            </div>
+          )}
+
+          {!screenshotResult && !screenshotError && !screenshotUploading && (
+            <p className="text-xs text-gray-600">
+              YouTube Studio のトラフィックソース画面のスクショをアップロードすると、
+              インプレッション・CTR・視聴回数が自動で取り込まれます。
+            </p>
+          )}
         </div>
 
         {/* サマリー数値 */}
