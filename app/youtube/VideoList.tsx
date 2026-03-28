@@ -142,7 +142,7 @@ export default function VideoList({ channelId, uploadsPlaylistId }: Props) {
   useEffect(() => {
     if (!channelId || !uploadsPlaylistId) return;
 
-    const CACHE_KEY = `yt_videos_cache:${channelId}`;
+    const CACHE_KEY = `yt_videos_cache_v2:${channelId}`;
     const CACHE_TTL_MS = 30 * 60 * 1000; // 30分
 
     // キャッシュチェック
