@@ -169,10 +169,10 @@ export default function VideoDetailPanel({ video, channelId, avgViews, onClose }
       />
 
       {/* ドロワー */}
-      <div className="fixed right-0 top-0 h-full w-full max-w-xl bg-gray-950 border-l border-gray-800 z-50 overflow-y-auto shadow-2xl flex flex-col">
+      <div className="fixed right-0 top-0 h-full w-full max-w-full sm:max-w-xl bg-gray-950 border-l border-gray-800 z-50 overflow-y-auto shadow-2xl flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
 
         {/* ヘッダー */}
-        <div className="flex items-start gap-3 p-5 border-b border-gray-800">
+        <div className="flex items-start gap-3 p-4 sm:p-5 border-b border-gray-800">
           <img
             src={video.thumbnail}
             alt={video.title}
@@ -202,10 +202,10 @@ export default function VideoDetailPanel({ video, channelId, avgViews, onClose }
         </div>
 
         {/* スクショ取り込み */}
-        <div className="p-5 border-b border-gray-800">
-          <div className="flex items-center justify-between mb-3">
+        <div className="p-4 sm:p-5 border-b border-gray-800">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-3">
             <h3 className="text-sm font-semibold text-gray-300">YouTube Studio から取り込む</h3>
-            <label className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors cursor-pointer border ${
+            <label className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors cursor-pointer border w-full sm:w-auto text-center sm:text-left ${
               screenshotUploading
                 ? "bg-gray-800 text-gray-500 border-gray-700 cursor-not-allowed"
                 : "bg-gray-800 text-gray-300 border-gray-700 hover:text-white hover:border-gray-500"
@@ -233,7 +233,7 @@ export default function VideoDetailPanel({ video, channelId, avgViews, onClose }
           {screenshotResult && (
             <div className="space-y-2">
               {/* 合計行 */}
-              <div className="grid grid-cols-4 gap-2 text-center bg-gray-900 rounded-lg p-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center bg-gray-900 rounded-lg p-3">
                 <div>
                   <p className="text-xs text-gray-500">インプレッション</p>
                   <p className="text-sm font-bold text-white">
@@ -262,8 +262,8 @@ export default function VideoDetailPanel({ video, channelId, avgViews, onClose }
 
               {/* ソース別 */}
               {screenshotResult.sources.length > 0 && (
-                <div className="rounded-lg overflow-hidden border border-gray-800">
-                  <table className="w-full text-xs">
+                <div className="rounded-lg overflow-x-auto border border-gray-800 touch-pan-x">
+                  <table className="w-full text-xs min-w-[280px]">
                     <thead>
                       <tr className="bg-gray-900 text-gray-500">
                         <th className="text-left px-3 py-2 font-normal">ソース</th>
@@ -298,7 +298,7 @@ export default function VideoDetailPanel({ video, channelId, avgViews, onClose }
         </div>
 
         {/* サマリー数値 */}
-        <div className="grid grid-cols-4 gap-3 p-5 border-b border-gray-800">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 sm:p-5 border-b border-gray-800">
           <MiniStat label="累計再生数" value={Number(video.viewCount).toLocaleString()} />
           <MiniStat label="高評価" value={Number(video.likeCount).toLocaleString()} />
           <MiniStat
@@ -314,8 +314,8 @@ export default function VideoDetailPanel({ video, channelId, avgViews, onClose }
         </div>
 
         {/* グラフ */}
-        <div className="p-5 flex-1">
-          <div className="flex items-center justify-between mb-4">
+        <div className="p-4 sm:p-5 flex-1">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
             <h3 className="text-sm font-semibold text-gray-300">推移グラフ</h3>
             <div className="flex gap-2">
               <TabBtn active={chartTab === "views"} onClick={() => setChartTab("views")}>

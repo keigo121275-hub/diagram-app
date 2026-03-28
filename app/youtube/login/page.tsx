@@ -2,11 +2,11 @@ import { signIn } from "@/auth";
 
 export default function LoginPage() {
   return (
-    <main className="min-h-screen bg-gray-950 flex items-center justify-center">
-      <div className="bg-gray-900 rounded-2xl p-10 flex flex-col items-center gap-6 shadow-2xl border border-gray-800 w-full max-w-sm">
-        <div className="flex items-center gap-3 whitespace-nowrap">
-          <span className="text-red-500 text-3xl">▶</span>
-          <h1 className="text-2xl font-bold text-white">YouTube Analytics</h1>
+    <main className="min-h-screen bg-gray-950 flex items-center justify-center p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+      <div className="bg-gray-900 rounded-2xl p-6 sm:p-10 flex flex-col items-center gap-5 sm:gap-6 shadow-2xl border border-gray-800 w-full max-w-sm">
+        <div className="flex items-center gap-2 sm:gap-3 text-center">
+          <span className="text-red-500 text-2xl sm:text-3xl flex-shrink-0">▶</span>
+          <h1 className="text-lg sm:text-2xl font-bold text-white leading-tight">YouTube Analytics</h1>
         </div>
         <p className="text-gray-400 text-sm text-center">
           ログインして

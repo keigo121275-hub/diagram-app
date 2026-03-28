@@ -90,24 +90,26 @@ export default function ChannelSelector() {
     return (
       <div>
         {/* channel header */}
-        <div className="flex items-center gap-3 mb-5">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-4 sm:mb-5 min-w-0">
           <button
             onClick={deselectChannel}
-            className="text-gray-400 hover:text-white text-sm transition-colors"
+            className="text-gray-400 hover:text-white text-sm transition-colors text-left w-fit"
           >
             ← チャンネル選択に戻る
           </button>
-          {selected.thumbnail && (
-            <img src={selected.thumbnail} alt={selected.name} className="w-8 h-8 rounded-full" />
-          )}
-          <span className="font-semibold text-white">{selected.name}</span>
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            {selected.thumbnail && (
+              <img src={selected.thumbnail} alt={selected.name} className="w-8 h-8 rounded-full flex-shrink-0" />
+            )}
+            <span className="font-semibold text-white truncate">{selected.name}</span>
+          </div>
         </div>
 
         {/* page tabs */}
-        <div className="flex gap-2 mb-6 border-b border-gray-800 pb-4">
+        <div className="flex flex-wrap gap-2 mb-5 sm:mb-6 border-b border-gray-800 pb-3 sm:pb-4">
           <button
             onClick={() => switchView("list")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-3 py-2 sm:px-4 rounded-lg text-xs sm:text-sm font-medium transition-colors flex-1 sm:flex-none min-w-[calc(50%-4px)] sm:min-w-0 ${
               pageView === "list"
                 ? "bg-red-600 text-white"
                 : "bg-gray-800 text-gray-400 hover:text-white"
@@ -117,7 +119,7 @@ export default function ChannelSelector() {
           </button>
           <button
             onClick={() => switchView("bottleneck")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-3 py-2 sm:px-4 rounded-lg text-xs sm:text-sm font-medium transition-colors flex-1 sm:flex-none min-w-[calc(50%-4px)] sm:min-w-0 ${
               pageView === "bottleneck"
                 ? "bg-red-600 text-white"
                 : "bg-gray-800 text-gray-400 hover:text-white"
@@ -139,18 +141,18 @@ export default function ChannelSelector() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-5">
-        <h2 className="text-lg font-semibold text-gray-300">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-5">
+        <h2 className="text-base sm:text-lg font-semibold text-gray-300">
           分析するチャンネルを選んでください
         </h2>
         <a
           href="/youtube/connect"
-          className="text-sm text-gray-500 hover:text-white transition-colors"
+          className="text-sm text-gray-500 hover:text-white transition-colors shrink-0"
         >
           チャンネルを管理する
         </a>
       </div>
-      <div className="grid gap-3 max-w-xl">
+      <div className="grid gap-3 w-full max-w-full sm:max-w-xl">
         {channels.map((ch) => (
           <button
             key={ch.id}

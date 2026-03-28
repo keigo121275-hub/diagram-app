@@ -222,23 +222,23 @@ export default function BottleneckView({ channelId, uploadsPlaylistId, sharedVid
       </div>
 
       {/* summary cards */}
-      <div className="grid grid-cols-4 gap-3 mb-6">
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-6">
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-3 sm:p-4">
           <p className="text-xs text-gray-500 mb-1">平均 CTR</p>
           <p className="text-xl font-bold text-amber-400">{avgCtr.toFixed(1)}%</p>
           <p className="text-xs text-gray-600 mt-1">業界目安 4〜6%</p>
         </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-3 sm:p-4">
           <p className="text-xs text-gray-500 mb-1">平均 視聴維持率</p>
           <p className="text-xl font-bold text-amber-400">{avgRet.toFixed(1)}%</p>
           <p className="text-xs text-gray-600 mt-1">業界目安 35〜45%</p>
         </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-3 sm:p-4">
           <p className="text-xs text-gray-500 mb-1">改善優先度 高</p>
           <p className="text-xl font-bold text-red-400">{quadCounts.all}本</p>
           <p className="text-xs text-gray-600 mt-1">CTR・維持率 両方低</p>
         </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-3 sm:p-4">
           <p className="text-xs text-gray-500 mb-1">勝ちパターン</p>
           <p className="text-xl font-bold text-emerald-400">{quadCounts.win}本</p>
           <p className="text-xs text-gray-600 mt-1">CTR・維持率 両方高</p>
@@ -246,10 +246,10 @@ export default function BottleneckView({ channelId, uploadsPlaylistId, sharedVid
       </div>
 
       {/* scatter plot */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-6">
-        <div className="flex items-center justify-between mb-4">
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-3 sm:p-5 mb-6">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between mb-3 sm:mb-4">
           <p className="text-sm font-semibold text-gray-300">CTR × 視聴維持率 マップ</p>
-          <p className="text-xs text-gray-600">各点 = 1動画 ／ 点の大きさ = 再生数</p>
+          <p className="text-[11px] sm:text-xs text-gray-600">各点 = 1動画 ／ 点の大きさ = 再生数</p>
         </div>
 
         {/* plot area */}
@@ -370,8 +370,8 @@ export default function BottleneckView({ channelId, uploadsPlaylistId, sharedVid
       </div>
 
       {/* sort + copy bar */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex gap-2 flex-wrap">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-4">
+        <div className="flex gap-1.5 sm:gap-2 flex-wrap">
           {([
             ["priority", "改善優先度順"],
             ["ctr",       "CTR低い順"],
@@ -381,7 +381,7 @@ export default function BottleneckView({ channelId, uploadsPlaylistId, sharedVid
             <button
               key={mode}
               onClick={() => setSortMode(mode)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-medium border transition-colors ${
                 sortMode === mode
                   ? "bg-gray-700 text-white border-gray-600"
                   : "bg-transparent text-gray-500 border-transparent hover:text-gray-300"
@@ -393,17 +393,19 @@ export default function BottleneckView({ channelId, uploadsPlaylistId, sharedVid
         </div>
         <button
           onClick={() => setModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-300 hover:text-white hover:border-gray-500 transition-colors"
+          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-xs sm:text-sm text-gray-300 hover:text-white hover:border-gray-500 transition-colors w-full sm:w-auto flex-shrink-0"
         >
           <span>📋</span> Claude / GPT に投げる
         </button>
       </div>
 
       {/* video table */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden overflow-x-auto touch-pan-x">
         {/* thead */}
-        <div className="grid gap-0 px-4 py-2.5 border-b border-gray-800 text-xs text-gray-500"
-             style={{ gridTemplateColumns: "minmax(0,2fr) 80px 80px 80px 110px" }}>
+        <div
+          className="grid gap-0 px-3 sm:px-4 py-2.5 border-b border-gray-800 text-[11px] sm:text-xs text-gray-500 min-w-[520px]"
+          style={{ gridTemplateColumns: "minmax(0,2fr) 72px 72px 72px 100px" }}
+        >
           <span>動画</span>
           <span className="text-right">再生数</span>
           <span className="text-right">CTR</span>
@@ -420,8 +422,8 @@ export default function BottleneckView({ channelId, uploadsPlaylistId, sharedVid
           return (
             <div
               key={v.id}
-              className="grid gap-0 px-4 py-3 border-b border-gray-800/50 last:border-0 items-center hover:bg-gray-800/40 transition-colors"
-              style={{ gridTemplateColumns: "minmax(0,2fr) 80px 80px 80px 110px" }}
+              className="grid gap-0 px-3 sm:px-4 py-3 border-b border-gray-800/50 last:border-0 items-center hover:bg-gray-800/40 transition-colors min-w-[520px]"
+              style={{ gridTemplateColumns: "minmax(0,2fr) 72px 72px 72px 100px" }}
             >
               {/* title + thumb */}
               <div className="flex items-center gap-3 min-w-0">
@@ -472,7 +474,7 @@ export default function BottleneckView({ channelId, uploadsPlaylistId, sharedVid
           onClick={() => setModalOpen(false)}
         >
           <div
-            className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-lg p-6"
+            className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-lg max-h-[min(90vh,32rem)] overflow-y-auto p-4 sm:p-6 mx-2"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-base font-bold text-white mb-1">Claude / GPT に投げる</h3>

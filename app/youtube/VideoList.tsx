@@ -343,12 +343,12 @@ export default function VideoList({ channelId, uploadsPlaylistId, onVideosChange
   return (
     <div>
       {/* ヘッダー行: タイトル + 今すぐ記録ボタン */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
         <h1 className="text-base font-semibold text-gray-400">チャンネル概要</h1>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
           {snapshotResult && (
             <span
-              className={`text-xs ${snapshotStatus === "error" ? "text-red-400" : "text-green-400"}`}
+              className={`text-xs order-2 sm:order-none ${snapshotStatus === "error" ? "text-red-400" : "text-green-400"}`}
             >
               {snapshotStatus === "done" ? `✓ 記録完了: ${snapshotResult}` : `⚠ ${snapshotResult}`}
             </span>
@@ -356,7 +356,7 @@ export default function VideoList({ channelId, uploadsPlaylistId, onVideosChange
           <button
             onClick={handleSnapshot}
             disabled={snapshotStatus === "loading"}
-            className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors border ${
+            className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors border w-full sm:w-auto ${
               snapshotStatus === "loading"
                 ? "bg-gray-800 text-gray-500 border-gray-700 cursor-not-allowed"
                 : snapshotStatus === "done"
@@ -474,8 +474,8 @@ export default function VideoList({ channelId, uploadsPlaylistId, onVideosChange
         )}
       </div>
 
-      <div className="flex items-center justify-between mb-5">
-        <h2 className="text-lg font-semibold text-gray-300">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-5">
+        <h2 className="text-base sm:text-lg font-semibold text-gray-300">
           最新の動画 ({filteredVideos.length}本)
         </h2>
         {analyticsLoading && (
@@ -496,19 +496,21 @@ export default function VideoList({ channelId, uploadsPlaylistId, onVideosChange
           <div
             key={video.id}
             onClick={() => setSelectedVideo(video)}
-            className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex gap-4 hover:border-gray-600 transition-colors cursor-pointer"
+            className="bg-gray-900 border border-gray-800 rounded-xl p-3 sm:p-4 flex flex-col sm:flex-row gap-3 sm:gap-4 hover:border-gray-600 transition-colors cursor-pointer"
           >
             <img
               src={video.thumbnail}
               alt={video.title}
-              className="w-40 h-24 object-cover rounded-lg flex-shrink-0"
+              className="w-full sm:w-40 aspect-video sm:aspect-auto sm:h-24 object-cover rounded-lg flex-shrink-0"
             />
             <div className="flex-1 min-w-0">
-              <div className="flex items-start gap-2 mb-2">
-                <h3 className="font-medium text-white leading-snug line-clamp-2 flex-1">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start mb-2">
+                <h3 className="font-medium text-white leading-snug line-clamp-2 flex-1 min-w-0 order-2 sm:order-1">
                   {video.title}
                 </h3>
-                <PerformanceBadge viewCount={Number(video.viewCount)} avgViews={channelStats?.avgViews ?? 0} />
+                <div className="order-1 sm:order-2 flex-shrink-0 self-start">
+                  <PerformanceBadge viewCount={Number(video.viewCount)} avgViews={channelStats?.avgViews ?? 0} />
+                </div>
               </div>
               <p className="text-sm text-gray-500 mb-3">
                 {new Date(video.publishedAt).toLocaleDateString("ja-JP")}
