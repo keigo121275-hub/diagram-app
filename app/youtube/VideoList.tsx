@@ -13,6 +13,7 @@ type VideoTimeseries = {
 };
 
 type TimeTab = "lifetime" | "1d" | "3d" | "7d" | "30d";
+type VideoTypeTab = "all" | "short" | "long";
 
 type Props = {
   channelId: string;
@@ -46,6 +47,9 @@ export default function VideoList({ channelId, uploadsPlaylistId }: Props) {
 
   // 動画詳細パネル
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
+
+  // ショート/長尺タブ
+  const [videoTypeTab, setVideoTypeTab] = useState<VideoTypeTab>("all");
 
   async function handleSnapshot() {
     if (snapshotStatus === "loading") return;
@@ -148,8 +152,8 @@ export default function VideoList({ channelId, uploadsPlaylistId }: Props) {
 
   // Step3: 時系列タブが選ばれたとき、初回だけAPIを叩く
   useEffect(() => {
-    if (activeTab === "lifetime") return;  // 累計タブは既存データで表示
-    if (timeseriesFetched) return;         // すでに取得済みなら何もしない
+    if (activeTab === "lifetime") return;
+    if (timeseriesFetched) return;
     if (videos.length === 0) return;
 
     setTimeseriesLoading(true);
@@ -173,14 +177,21 @@ export default function VideoList({ channelId, uploadsPlaylistId }: Props) {
       .finally(() => setTimeseriesLoading(false));
   }, [activeTab, timeseriesFetched, videos, channelId]);
 
-  // チャンネル平均を計算する（動画データが揃ってから）
+  // タブでフィルタした動画リスト
+  const filteredVideos = useMemo(() => {
+    if (videoTypeTab === "short") return videos.filter((v) => v.isShort === true);
+    if (videoTypeTab === "long")  return videos.filter((v) => v.isShort !== true);
+    return videos;
+  }, [videos, videoTypeTab]);
+
+  // チャンネル平均を計算する（フィルタ後の動画で計算）
   const channelStats = useMemo(() => {
-    if (videos.length === 0) return null;
+    if (filteredVideos.length === 0) return null;
 
     const avgViews =
-      videos.reduce((sum, v) => sum + Number(v.viewCount), 0) / videos.length;
+      filteredVideos.reduce((sum, v) => sum + Number(v.viewCount), 0) / filteredVideos.length;
 
-    const videosWithRetention = videos.filter((v) => v.avgViewPercent != null);
+    const videosWithRetention = filteredVideos.filter((v) => v.avgViewPercent != null);
     const avgRetention =
       videosWithRetention.length > 0
         ? videosWithRetention.reduce(
@@ -189,13 +200,12 @@ export default function VideoList({ channelId, uploadsPlaylistId }: Props) {
           ) / videosWithRetention.length
         : null;
 
-    // ヒット動画 = 再生数がチャンネル平均の5倍以上
-    const hitCount = videos.filter(
+    const hitCount = filteredVideos.filter(
       (v) => Number(v.viewCount) >= avgViews * 5
     ).length;
 
     return { avgViews, avgRetention, hitCount };
-  }, [videos]);
+  }, [filteredVideos]);
 
   if (loading) {
     return (
@@ -252,6 +262,38 @@ export default function VideoList({ channelId, uploadsPlaylistId }: Props) {
             )}
           </button>
         </div>
+      </div>
+
+      {/* ショート / 長尺 タブ */}
+      <div className="flex items-center gap-2 mb-4">
+        {([
+          { key: "all",   label: "すべて" },
+          { key: "short", label: "ショート" },
+          { key: "long",  label: "長尺" },
+        ] as { key: VideoTypeTab; label: string }[]).map(({ key, label }) => {
+          const count =
+            key === "all"   ? videos.length :
+            key === "short" ? videos.filter((v) => v.isShort === true).length :
+                              videos.filter((v) => v.isShort !== true).length;
+          return (
+            <button
+              key={key}
+              onClick={() => setVideoTypeTab(key)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                videoTypeTab === key
+                  ? "bg-red-600 text-white"
+                  : "bg-gray-800 text-gray-400 hover:text-white"
+              }`}
+            >
+              {label}
+              <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                videoTypeTab === key ? "bg-red-500/50" : "bg-gray-700 text-gray-500"
+              }`}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* チャンネルサマリーバー */}
@@ -318,7 +360,7 @@ export default function VideoList({ channelId, uploadsPlaylistId }: Props) {
 
       <div className="flex items-center justify-between mb-5">
         <h2 className="text-lg font-semibold text-gray-300">
-          最新の動画 ({videos.length}本)
+          最新の動画 ({filteredVideos.length}本)
         </h2>
         {analyticsLoading && (
           <span className="text-xs text-gray-500 flex items-center gap-1.5">
@@ -334,7 +376,7 @@ export default function VideoList({ channelId, uploadsPlaylistId }: Props) {
       </div>
 
       <div className="grid gap-4">
-        {videos.map((video) => (
+        {filteredVideos.map((video) => (
           <div
             key={video.id}
             onClick={() => setSelectedVideo(video)}

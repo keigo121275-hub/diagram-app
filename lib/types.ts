@@ -31,6 +31,8 @@ export type Video = {
   publishedAt: string;
   viewCount: string;
   likeCount: string;
+  duration?: string;   // ISO 8601 形式 (例: PT1M30S)
+  isShort?: boolean;   // 60秒以下なら true
   ctr?: number | null;
   avgViewPercent?: number | null;
 };

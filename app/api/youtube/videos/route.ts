@@ -45,21 +45,34 @@ export async function GET(request: NextRequest) {
     }
 
     const statsRes = await youtube.videos.list({
-      part: ["statistics", "snippet"],
+      part: ["statistics", "snippet", "contentDetails"],
       id: videoIds,
     });
 
-    const videos: Video[] = statsRes.data.items?.map((item) => ({
-      id: item.id ?? "",
-      title: item.snippet?.title ?? "",
-      thumbnail:
-        item.snippet?.thumbnails?.medium?.url ??
-        item.snippet?.thumbnails?.default?.url ??
-        "",
-      publishedAt: item.snippet?.publishedAt ?? "",
-      viewCount: item.statistics?.viewCount ?? "0",
-      likeCount: item.statistics?.likeCount ?? "0",
-    })) ?? [];
+    /** ISO 8601 duration → 秒数に変換 (例: PT1M30S → 90) */
+    function parseDuration(iso: string): number {
+      const m = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+      if (!m) return 0;
+      return (parseInt(m[1] ?? "0") * 3600) + (parseInt(m[2] ?? "0") * 60) + parseInt(m[3] ?? "0");
+    }
+
+    const videos: Video[] = statsRes.data.items?.map((item) => {
+      const duration = item.contentDetails?.duration ?? "";
+      const durationSec = parseDuration(duration);
+      return {
+        id: item.id ?? "",
+        title: item.snippet?.title ?? "",
+        thumbnail:
+          item.snippet?.thumbnails?.medium?.url ??
+          item.snippet?.thumbnails?.default?.url ??
+          "",
+        publishedAt: item.snippet?.publishedAt ?? "",
+        viewCount: item.statistics?.viewCount ?? "0",
+        likeCount: item.statistics?.likeCount ?? "0",
+        duration,
+        isShort: durationSec > 0 && durationSec <= 60,
+      };
+    }) ?? [];
 
     return NextResponse.json({ videos });
   } catch (err) {
