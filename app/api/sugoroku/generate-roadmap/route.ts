@@ -34,8 +34,9 @@ export async function POST(request: NextRequest) {
   const prompt = `以下のテキストから育成ロードマップのタスクリストをJSON形式で生成してください。
 
 【制約】
-- タスクは large / medium / small の3階層で分類する
-- 合計タスク数は15〜25個を目安にする
+- 大タスク（large）は5〜8個にまとめる。これがすごろくの「マス」になる
+- 各大タスクの中に、中タスク（medium）を2〜4個入れる
+- 必要であれば中タスクの中に小タスク（small）を1〜3個入れる
 - 並び順は学習・作業の自然な順序にする
 - 各タスクにtitle（日本語）とlevelを付ける
 - 期間の目安: ${duration}
@@ -44,8 +45,21 @@ export async function POST(request: NextRequest) {
 {
   "roadmap_title": "ロードマップタイトル",
   "tasks": [
-    { "title": "タスク名", "level": "large", "order": 1 },
-    { "title": "タスク名", "level": "medium", "order": 2 }
+    {
+      "title": "大タスク名",
+      "level": "large",
+      "order": 1,
+      "children": [
+        {
+          "title": "中タスク名",
+          "level": "medium",
+          "order": 1,
+          "children": [
+            { "title": "小タスク名", "level": "small", "order": 1 }
+          ]
+        }
+      ]
+    }
   ]
 }
 
