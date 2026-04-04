@@ -66,6 +66,7 @@ export interface Database {
           level: "large" | "medium" | "small" | null;
           order: number | null;
           status: "todo" | "in_progress" | "pending_approval" | "done" | "needs_revision";
+          due_date: string | null;
           created_by: string | null;
           created_at: string;
         };
@@ -77,6 +78,7 @@ export interface Database {
           level?: "large" | "medium" | "small" | null;
           order?: number | null;
           status?: "todo" | "in_progress" | "pending_approval" | "done" | "needs_revision";
+          due_date?: string | null;
           created_by?: string | null;
           created_at?: string;
         };
@@ -88,6 +90,7 @@ export interface Database {
           level?: "large" | "medium" | "small" | null;
           order?: number | null;
           status?: "todo" | "in_progress" | "pending_approval" | "done" | "needs_revision";
+          due_date?: string | null;
           created_by?: string | null;
           created_at?: string;
         };

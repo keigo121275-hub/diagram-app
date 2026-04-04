@@ -24,6 +24,15 @@ interface SugorokuBoardProps {
   roadmaps: RoadmapWithTasks[];
 }
 
+function sortTasks(tasks: Task[]): Task[] {
+  return [...tasks].sort((a, b) => {
+    if (a.due_date && b.due_date) return a.due_date.localeCompare(b.due_date);
+    if (a.due_date) return -1;
+    if (b.due_date) return 1;
+    return (a.order ?? 0) - (b.order ?? 0);
+  });
+}
+
 export default function SugorokuBoard({
   currentMember,
   allMembers,
@@ -37,6 +46,7 @@ export default function SugorokuBoard({
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
   const [deletingAll, setDeletingAll] = useState(false);
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
+  const [localTasksMap, setLocalTasksMap] = useState<Record<string, Task[]>>({});
 
   const activeMemberId = isAdmin ? selectedMemberId : (currentMember?.id ?? "");
   const activeMember = isAdmin
@@ -44,9 +54,8 @@ export default function SugorokuBoard({
     : currentMember;
 
   const roadmap = roadmaps.find((r) => r.member_id === activeMemberId);
-  const allTasks = (roadmap?.tasks ?? []).sort(
-    (a, b) => (a.order ?? 0) - (b.order ?? 0)
-  );
+  const rawTasks = localTasksMap[activeMemberId] ?? roadmap?.tasks ?? [];
+  const allTasks = sortTasks(rawTasks);
   const tasks = allTasks.filter((t) => t.parent_id === null);
   const doneCount = tasks.filter((t) => t.status === "done").length;
 
@@ -66,6 +75,25 @@ export default function SugorokuBoard({
     const supabase = createClient();
     await supabase.from("roadmaps").delete().eq("id", roadmap.id);
     setDeletingAll(false);
+    router.refresh();
+  };
+
+  // ドラッグ並べ替え後のハンドラ
+  const handleReorder = async (newRootTasks: Task[]) => {
+    if (!roadmap) return;
+
+    // ローカル state を即座に反映（楽観的 UI）
+    const otherTasks = rawTasks.filter((t) => t.parent_id !== null);
+    const updatedAllTasks = [...newRootTasks, ...otherTasks];
+    setLocalTasksMap((prev) => ({ ...prev, [activeMemberId]: updatedAllTasks }));
+
+    // DB に order を一括更新
+    const supabase = createClient();
+    await Promise.all(
+      newRootTasks.map((t, i) =>
+        supabase.from("tasks").update({ order: i + 1 }).eq("id", t.id)
+      )
+    );
     router.refresh();
   };
 
@@ -147,6 +175,7 @@ export default function SugorokuBoard({
               currentMember={activeMember as Member}
               isAdmin={isAdmin}
               onDeleteTask={handleDeleteTask}
+              onReorder={handleReorder}
             />
           ) : (
             <div className="text-center py-12">

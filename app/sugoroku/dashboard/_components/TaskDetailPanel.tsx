@@ -37,6 +37,10 @@ export default function TaskDetailPanel({ task, allTasks, onClose }: TaskDetailP
   const [addingLevel, setAddingLevel] = useState<"medium" | "small">("medium");
   const [addingChild, setAddingChild] = useState(false);
 
+  // 日付
+  const [dueDate, setDueDate] = useState<string>(task.due_date ?? "");
+  const [savingDate, setSavingDate] = useState(false);
+
   // コメント
   const [comments, setComments] = useState<CommentWithAuthor[]>([]);
   const [commentText, setCommentText] = useState("");
@@ -94,6 +98,17 @@ export default function TaskDetailPanel({ task, allTasks, onClose }: TaskDetailP
     if (status === "in_progress") return { label: "完了にする", next: "done" };
     if (status === "needs_revision") return { label: "再開する", next: "in_progress" };
     return null;
+  };
+
+  const updateDueDate = async (value: string) => {
+    setSavingDate(true);
+    const supabase = createClient();
+    await supabase
+      .from("tasks")
+      .update({ due_date: value || null })
+      .eq("id", task.id);
+    setSavingDate(false);
+    router.refresh();
   };
 
   const updateLargeStatus = async (newStatus: Task["status"]) => {
@@ -240,6 +255,43 @@ export default function TaskDetailPanel({ task, allTasks, onClose }: TaskDetailP
               >
                 {STATUS_LABELS[largeStatus]}
               </span>
+            </div>
+          </div>
+
+          {/* 期限日 */}
+          <div
+            className="rounded-xl p-4"
+            style={{ background: "#232636", border: "1px solid #2e3347" }}
+          >
+            <p className="text-xs font-medium mb-2" style={{ color: "#94a3b8" }}>
+              期限日
+            </p>
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                onBlur={(e) => updateDueDate(e.target.value)}
+                className="flex-1 px-3 py-1.5 rounded-lg text-xs outline-none"
+                style={{
+                  background: "#1a1d27",
+                  border: "1px solid #2e3347",
+                  color: dueDate ? "#a5b4fc" : "#4a5568",
+                  colorScheme: "dark",
+                }}
+              />
+              {dueDate && (
+                <button
+                  onClick={() => { setDueDate(""); updateDueDate(""); }}
+                  className="text-xs px-2 py-1.5 rounded-lg"
+                  style={{ background: "#1a1d27", color: "#64748b", border: "1px solid #2e3347" }}
+                >
+                  クリア
+                </button>
+              )}
+              {savingDate && (
+                <span className="text-xs" style={{ color: "#4a5568" }}>保存中...</span>
+              )}
             </div>
           </div>
 
