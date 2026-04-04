@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ざっくり版｜食べながら整えるダイエット｜ベルラス</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Hiragino Maru Gothic ProN', 'BIZ UDPGothic', sans-serif;
+      background: #fff;
+      color: #333;
+      font-size: 17px;
+      line-height: 1.75;
+      word-break: keep-all;
+    }
+    header {
+      background: linear-gradient(145deg, #ffe4ec 0%, #fff5f8 50%, #fdf3e7 100%);
+      text-align: center;
+      padding: 44px 20px 36px;
+      border-bottom: 3px solid #f9c4d2;
+    }
+    header .label {
+      display: inline-block;
+      background: linear-gradient(90deg, #f06292, #ec407a);
+      color: #fff;
+      font-size: 13px;
+      padding: 6px 16px;
+      border-radius: 999px;
+      margin-bottom: 14px;
+      font-weight: 700;
+    }
+    header h1 {
+      font-size: clamp(26px, 5.5vw, 34px);
+      color: #c2185b;
+      font-weight: 900;
+      line-height: 1.3;
+      margin-bottom: 10px;
+    }
+    header .sub {
+      color: #555;
+      font-size: 16px;
+      font-weight: 700;
+    }
+    nav {
+      background: #fff9fb;
+      border: 2px solid #f9c4d2;
+      border-radius: 18px;
+      max-width: 700px;
+      margin: 28px auto;
+      padding: 22px 22px 18px;
+    }
+    nav h2 {
+      color: #c2185b;
+      font-size: clamp(24px, 4vw, 26px);
+      margin-bottom: 14px;
+    }
+    nav .toc-grid { list-style: none; }
+    nav .toc-grid a {
+      text-decoration: none;
+      color: #d81b60;
+      font-size: 15px;
+      font-weight: 700;
+      display: block;
+      padding: 10px 0;
+      border-bottom: 1px dashed #f9c4d2;
+    }
+    nav .toc-grid li:last-child a { border-bottom: none; }
+    nav .toc-grid a:hover { color: #ad1457; }
+    main { max-width: 700px; margin: 0 auto; padding: 0 18px 72px; }
+    section { margin-bottom: 48px; }
+    .kicker {
+      font-size: 13px;
+      font-weight: 800;
+      color: #f06292;
+      letter-spacing: 0.06em;
+      margin-bottom: 6px;
+    }
+    section h2 {
+      font-size: clamp(24px, 4vw, 28px);
+      color: #c2185b;
+      font-weight: 900;
+      line-height: 1.3;
+      margin-bottom: 16px;
+    }
+    .punch {
+      font-size: clamp(19px, 4vw, 24px);
+      font-weight: 900;
+      color: #ad1457;
+      line-height: 1.45;
+      margin: 14px 0 18px;
+    }
+    p { margin: 0 0 14px; font-size: 17px; }
+    .tight-list {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 16px;
+    }
+    .tight-list li {
+      padding: 10px 0 10px 28px;
+      position: relative;
+      font-size: 17px;
+      font-weight: 700;
+      border-bottom: 1px dotted #f8bbd0;
+    }
+    .tight-list li::before {
+      content: '♥';
+      position: absolute;
+      left: 0;
+      color: #f06292;
+      font-size: 14px;
+      top: 11px;
+    }
+    .tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+    .tag {
+      background: #fff;
+      border: 2px solid #f9c4d2;
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 800;
+      color: #c2185b;
+    }
+    .chat-user {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin: 18px 0;
+    }
+    .chat-user .avatar {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: #ffe0b2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      flex-shrink: 0;
+      border: 3px solid #ffcc80;
+    }
+    .chat-user .bubble-wrap { flex: 1; min-width: 0; }
+    .chat-user .name { font-size: 11px; color: #999; font-weight: 700; }
+    .chat-user .bubble {
+      background: #fff8e1;
+      border: 2px solid #ffcc80;
+      border-radius: 0 18px 18px 18px;
+      padding: 12px 16px;
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1.65;
+    }
+    .chat-rie {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin: 18px 0;
+      flex-direction: row-reverse;
+    }
+    .chat-rie .avatar {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      border: 3px solid #f06292;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .chat-rie .avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center top;
+      display: block;
+    }
+    .chat-rie .bubble-wrap {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+    }
+    .chat-rie .name { font-size: 11px; color: #e91e8c; font-weight: 800; }
+    .chat-rie .bubble {
+      background: #fff0f5;
+      border: 2px solid #f9c4d2;
+      border-radius: 18px 0 18px 18px;
+      padding: 12px 16px;
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1.65;
+    }
+    .pop-card {
+      background: linear-gradient(160deg, #fff9fb, #fff);
+      border: 2px solid #fce4ec;
+      border-radius: 16px;
+      padding: 16px 18px;
+      margin: 12px 0;
+    }
+    .pop-card .ttl {
+      font-size: 15px;
+      font-weight: 900;
+      color: #c2185b;
+      margin-bottom: 6px;
+    }
+    .pop-card p { margin: 0; font-size: 16px; font-weight: 700; color: #444; }
+    .vs2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin: 16px 0;
+    }
+    .vs2 .box {
+      border-radius: 14px;
+      padding: 14px;
+      text-align: center;
+      font-weight: 800;
+      font-size: 15px;
+      line-height: 1.5;
+    }
+    .vs2 .young { background: #e8f5e9; color: #2e7d32; border: 2px solid #a5d6a7; }
+    .vs2 .now { background: #fce4ec; color: #ad1457; border: 2px solid #f48fb1; }
+    .ng-ok {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 14px 0;
+    }
+    .pill {
+      padding: 10px 16px;
+      border-radius: 12px;
+      font-weight: 800;
+      font-size: 15px;
+    }
+    .pill.bad { background: #ffebee; color: #c62828; }
+    .pill.good { background: #e8f5e9; color: #2e7d32; }
+    .big-num {
+      font-size: clamp(28px, 6vw, 40px);
+      font-weight: 900;
+      color: #f06292;
+      line-height: 1.1;
+      margin: 8px 0 4px;
+    }
+    .big-num span { font-size: 16px; color: #666; font-weight: 700; }
+    .step-next {
+      text-align: center;
+      font-size: 20px;
+      color: #f06292;
+      margin: 22px 0;
+      font-weight: 900;
+    }
+    .checklist {
+      list-style: none;
+      padding: 0;
+      margin: 18px 0;
+    }
+    .checklist li {
+      padding: 14px 0 14px 40px;
+      position: relative;
+      font-size: 17px;
+      font-weight: 700;
+      border-bottom: 1px dashed #f9c4d2;
+      line-height: 1.55;
+    }
+    .checklist li::before {
+      content: '✅';
+      position: absolute;
+      left: 0;
+      top: 14px;
+    }
+    .cta-wrap {
+      background: linear-gradient(135deg, #f06292, #e91e8c);
+      border-radius: 20px;
+      padding: 32px 22px;
+      text-align: center;
+      color: #fff;
+      margin-top: 28px;
+    }
+    .cta-wrap h3 { color: #fff; font-size: 24px; margin: 0 0 10px; font-weight: 900; }
+    .cta-wrap p { font-size: 16px; opacity: 0.95; margin-bottom: 20px; font-weight: 700; }
+    .cta-btn {
+      display: inline-block;
+      background: #fff;
+      color: #e91e8c;
+      font-weight: 900;
+      font-size: 17px;
+      padding: 16px 28px;
+      border-radius: 999px;
+      text-decoration: none;
+    }
+    .part-label {
+      display: inline-block;
+      background: #c2185b;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 800;
+      padding: 5px 12px;
+      border-radius: 8px;
+      margin-bottom: 8px;
+    }
+    .micro { font-size: 14px; color: #777; font-weight: 600; margin-top: 8px; }
+    .five-flow {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 16px;
+      counter-reset: flow;
+    }
+    .five-flow li {
+      counter-increment: flow;
+      padding: 12px 0 12px 42px;
+      position: relative;
+      font-size: 17px;
+      font-weight: 700;
+      border-bottom: 1px dotted #f8bbd0;
+      line-height: 1.55;
+    }
+    .five-flow li::before {
+      content: counter(flow);
+      position: absolute;
+      left: 0;
+      top: 10px;
+      width: 28px;
+      height: 28px;
+      background: #f06292;
+      color: #fff;
+      border-radius: 50%;
+      font-size: 14px;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    footer {
+      text-align: center;
+      padding: 28px 14px;
+      font-size: 14px;
+      color: #bbb;
+      border-top: 1px solid #fce4ec;
+    }
+    @media (max-width: 480px) {
+      .vs2 { grid-template-columns: 1fr; }
+      body, p, .tight-list li { font-size: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="label">ベルラス｜読むの3分でOKなメモ</div>
+  <h1>いまの体、ちゃんと味方にする<br>ダイエットのコツ</h1>
+  <p class="sub">40代・50代・60代の私たち向け。難しい話はなし。</p>
+</header>
+
+<nav>
+  <h2>どこから読む？</h2>
+  <ul class="toc-grid">
+    <li><a href="#intro">若いときと同じ、はもうやめていいかも</a></li>
+    <li><a href="#why">痩せにくくなる、よくある3パターン</a></li>
+    <li><a href="#trap">がんばりすぎ注意ゾーン</a></li>
+    <li><a href="#flow">全体の流れ（5つだけ）</a></li>
+    <li><a href="#trust">数字で見る「続いた人」</a></li>
+    <li><a href="#eat">食べ物編：まずここから</a></li>
+    <li><a href="#cook">油と火の使い方、ちょい変えるだけ</a></li>
+    <li><a href="#fuel">からだを動かす「材料」不足、防ぐには</a></li>
+    <li><a href="#calm">眠り＆イライラ対策、ざっくり</a></li>
+    <li><a href="#plate">献立の型＆時短のヒント</a></li>
+    <li><a href="#line">LINEでもらえるやつ</a></li>
+    <li><a href="#work">おまけ：体験をお仕事にする話</a></li>
+    <li><a href="#matome">今日の宿題チェック</a></li>
+  </ul>
+</nav>
+
+<main>
+
+<section id="intro">
+  <p class="kicker">はじめに</p>
+  <h2>若いときと同じ、はもうやめていいかも</h2>
+  <p class="punch">「昔は走ったら落ちたのに…」それ、あなたのせいじゃない。</p>
+
+  <div class="chat-user">
+    <div class="avatar">👩</div>
+    <div class="bubble-wrap">
+      <span class="name">私たち</span>
+      <div class="bubble">減らしてるのに、なんで？って思う日ある…</div>
+    </div>
+  </div>
+  <div class="chat-rie">
+    <div class="avatar"><img src="rie.png" alt="松田リエ"></div>
+    <div class="bubble-wrap">
+      <span class="name">松田リエ</span>
+      <div class="bubble">いまは「我慢一本勝負」より、<strong>食べ方の順番と中身</strong>のほうが効くことが多いよ。</div>
+    </div>
+  </div>
+
+  <div class="vs2">
+    <div class="box young">昔<br>がんばりがそのまま数字に出やすかった</div>
+    <div class="box now">いま<br>同じやり方だと空回りしやすい</div>
+  </div>
+  <p style="font-weight:800;color:#c2185b;">→ 結論：減らすだけじゃなく、<strong>ちゃんと食べて整える</strong>がキーワード。</p>
+</section>
+
+<section id="why">
+  <p class="kicker">なるほどね</p>
+  <h2>痩せにくくなる、よくある3パターン</h2>
+  <ul class="tight-list">
+    <li>体のリズムが変わる頃 → 脂肪のつき方も変わる</li>
+    <li>筋肉さんが減りがち → 同じ生活でも消費しにくい</li>
+    <li>食べすぎ禁止！が続くと → 体が動くための材料も足りなくなる</li>
+  </ul>
+  <div class="pop-card">
+    <div class="ttl">一言でいうと</div>
+    <p>走る・我慢する「だけ」だと、いまの体は応えにくい。</p>
+  </div>
+</section>
+
+<section id="trap">
+  <p class="kicker">要注意</p>
+  <h2>がんばりすぎ注意ゾーン</h2>
+  <div class="ng-ok">
+    <span class="pill bad">運動だけ増やしすぎ</span>
+    <span class="pill bad">筋トレだけ＋食事ガバ</span>
+    <span class="pill bad">食べる量だけカット</span>
+  </div>
+  <p style="font-weight:700;">どれも「悪い！」というより、<strong>いまの体には合わないことがある</strong>って話。順番とセットが大事。</p>
+</section>
+
+<section id="flow">
+  <p class="kicker">地図</p>
+  <h2>全体の流れ（5つだけ）</h2>
+  <ol class="five-flow">
+    <li>いまの体がどう変わりやすいか、ざっくり把握</li>
+    <li>買う・並べる食材をちょい工夫</li>
+    <li>栄養のバランスを「偏りすぎない」に寄せる</li>
+    <li>ストレスと眠りを軽く手なずける</li>
+    <li>続く形（献立の型）を決める</li>
+  </ol>
+  <p class="micro">※細かい用語より、「この順でやれば迷わない」が目的。</p>
+</section>
+
+<section id="trust">
+  <p class="kicker">え、ほんと？</p>
+  <h2>数字で見る「続いた人」</h2>
+  <p class="big-num">8割ちかく<span>が短期間で目標に近づいた、という報告あり</span></p>
+  <div class="tags">
+    <span class="tag">たくさんの食事データから作った方法</span>
+    <span class="tag">特許の仕組みで食事チェックも</span>
+  </div>
+  <div class="pop-card">
+    <div class="ttl">50代・60代の声（イメージ）</div>
+    <p>「お腹まわりが楽になった」「数字（血圧など）も穏やかになった」など、生活が軽くなった、という話が多い。</p>
+  </div>
+</section>
+
+<section id="eat">
+  <p class="kicker">STEP 1</p>
+  <h2>食べ物編：まずここから</h2>
+  <div class="tags">
+    <span class="tag">豆・野菜多め</span>
+    <span class="tag">たんぱく質ちゃんと</span>
+    <span class="tag">食物繊維</span>
+  </div>
+  <div class="pop-card">
+    <div class="ttl">なんでお腹まわりが気になるの？</div>
+    <p>昔は全身に分散しやすかった脂肪が、いまは<strong>お腹の内側</strong>に寄りやすい時期がある。だから「見た目＋中身」両方ケアしたい。</p>
+  </div>
+  <p style="font-weight:800;margin-top:16px;">買い物メモの例</p>
+  <div class="tags">
+    <span class="tag">豆腐・納豆・豆乳</span>
+    <span class="tag">ブロッコリー</span>
+    <span class="tag">ごま・アーモンド</span>
+    <span class="tag">亜麻仁油（サラダに）</span>
+    <span class="tag">ザクロ・アボカド</span>
+  </div>
+  <div class="step-next">▼</div>
+</section>
+
+<section id="cook">
+  <p class="kicker">STEP 2</p>
+  <h2>油と火の使い方、ちょい変えるだけ</h2>
+  <div class="ng-ok">
+    <span class="pill bad">いつも揚げ</span>
+    <span class="pill good">焼く・蒸す・煮る多め</span>
+  </div>
+  <p style="font-weight:700;">油は、同じ重さでもカロリーが<strong>ぐっと重い</strong>。だから調理法を変えると、気づかないうちにかなり変わる。</p>
+  <div class="pop-card">
+    <div class="ttl">例：むね肉100gくらい</div>
+    <p>から揚げ系 vs 蒸し・ゆで系 → <strong>200kcalくらい差がつくことも</strong>。毎日ちょっとずつ、積み重なる。</p>
+  </div>
+  <p style="font-weight:800;">脂っこさ控えめな主役の例</p>
+  <div class="tags">
+    <span class="tag">鶏むね</span>
+    <span class="tag">豚ヒレ</span>
+    <span class="tag">マグロ</span>
+    <span class="tag">いか・たこ</span>
+  </div>
+  <div class="step-next">▼</div>
+</section>
+
+<section id="fuel">
+  <p class="kicker">STEP 3</p>
+  <h2>からだを動かす「材料」不足、防ぐには</h2>
+  <p style="font-weight:700;">難しく言うとビタミン・ミネラル。やることはシンプルで、<strong>色のある野菜・魚・豆・卵・乳</strong>を、毎日どれかは入れる。</p>
+  <div class="pop-card">
+    <div class="ttl">ついやりがちNG</div>
+    <p>コーヒーだけ飲みまくる・コンビニおかずばかり。たまにはOK。続くと「動け材料」が抜けやすい。</p>
+  </div>
+  <div class="step-next">▼</div>
+</section>
+
+<section id="calm">
+  <p class="kicker">STEP 4</p>
+  <h2>眠り＆イライラ対策、ざっくり</h2>
+  <p style="font-weight:700;">イライラ続き＆寝不足は、<strong>お腹まわりがつきやすい体</strong>のスイッチを入れがち。対策はごく普通でOK。</p>
+  <ul class="tight-list">
+    <li>眠るなら <strong>7時間</strong>を目安に（夜中の眠りも大事）</li>
+    <li>寝る前に <strong>ぬるめのお風呂</strong>（だらだらスマホより先に）</li>
+    <li>寝る直前は <strong>画面は暗め・短め</strong></li>
+  </ul>
+  <p style="font-weight:800;">おやつ代わりに手が届きやすいもの</p>
+  <div class="tags">
+    <span class="tag">バナナ</span>
+    <span class="tag">キウイ</span>
+  </div>
+  <p class="micro">※量はほどほど。夜遅すぎるなら昼〜夕方に。</p>
+  <div class="step-next">▼</div>
+</section>
+
+<section id="plate">
+  <p class="kicker">STEP 5</p>
+  <h2>献立の型＆時短のヒント</h2>
+  <div class="pop-card">
+    <div class="ttl">迷ったらこの型</div>
+    <p><strong>ごはん＋メイン（たんぱく）＋副菜ふたつ＋汁</strong>。これだけで「抜け」が減る。</p>
+  </div>
+  <div class="pop-card">
+    <div class="ttl">忙しい日の例</div>
+    <p>雑穀ごはん＋キムチ納豆、サラダ、<strong>乾燥野菜＋みそ玉で即みそ汁</strong>。洗い物少なめで整う。</p>
+  </div>
+  <p style="font-weight:700;">魚をホイルで焼く・キャベツ多め、など、味はシンプルで十分。舌がリセットされると続く。</p>
+</section>
+
+<section id="line">
+  <p class="kicker">もらえる</p>
+  <h2>LINEでもらえるやつ</h2>
+  <p style="font-weight:700;">登録特典で、<strong>コピペで使えるレシピ集</strong>や、2週間ぶんの献立テンプレ、15分ごはん案、食材の目安リストなどがまとまってる、というイメージでOK。</p>
+</section>
+
+<section id="work">
+  <span class="part-label">おまけコーナー</span>
+  <h2>体験を、お仕事にしてみる？</h2>
+  <p class="punch">「自分、ダメだった時期」ほど、誰かの力になることがある。</p>
+  <ul class="tight-list">
+    <li>在宅で、食事写真にコメントしたり伴走したり</li>
+    <li>難しい営業より、<strong>一緒に喜ぶ・一緒に立て直す</strong>がメイン</li>
+    <li>未経験スタートの人も多い、という話</li>
+  </ul>
+  <div class="tags">
+    <span class="tag">育児・介護で外出しにくい</span>
+    <span class="tag">資格より人柄重視</span>
+    <span class="tag">需要は増えやすい分野</span>
+  </div>
+  <div class="pop-card">
+    <div class="ttl">収入のイメージだけ</div>
+    <p>人数と期間で変わる。在宅でも、<strong>ちょっとずつ積み上げ型</strong>のイメージで見ておくと気が楽。</p>
+  </div>
+  <p class="micro">詳細は講座・公式情報で。ここは「そんな道もあるんだ」程度でOK。</p>
+</section>
+
+<section id="matome">
+  <p class="kicker">最後に</p>
+  <h2>今日の宿題チェック</h2>
+  <ul class="checklist">
+    <li>我慢だけに頼らず、<strong>ごはん・おかず・汁の型</strong>を1回試す。</li>
+    <li>今週の買い物に、<strong>豆・色野菜・たんぱく</strong>を必ず1つずつ入れる。</li>
+    <li><strong>揚げ→蒸す・焼く</strong>に1品だけでも置き換える。</li>
+    <li>寝る前、<strong>お風呂 or 画面オフ</strong>をどちらか1つだけでもやる。</li>
+    <li>もっと楽したい人は、<strong>LINE特典</strong>を覗いてテンプレ借りる。</li>
+  </ul>
+
+  <div class="cta-wrap">
+    <h3>続きはLINEで</h3>
+    <p>レシピや詳しい流れは、登録してからゆっくりどうぞ。</p>
+    <a href="#" class="cta-btn">📩 LINEでもっと詳しく受け取る</a>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  © Belle Lus株式会社 / 松田リエ公式
+</footer>
+
+</body>
+</html>

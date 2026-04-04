@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>松田リエの12kgやせた！1か月献立カレンダー｜ベルラスダイエット</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; word-break: keep-all; }
+    body {
+      font-family: 'Hiragino Maru Gothic ProN', 'BIZ UDPGothic', sans-serif;
+      background: #fff;
+      color: #333;
+      line-height: 1.7;
+    }
+
+    /* ===== ヘッダー ===== */
+    .header {
+      background: linear-gradient(135deg, #f06292, #c2185b);
+      color: #fff;
+      text-align: center;
+      padding: 48px 20px 40px;
+    }
+    .header .label {
+      display: inline-block;
+      background: #fff;
+      color: #c2185b;
+      font-size: 13px;
+      font-weight: bold;
+      border-radius: 20px;
+      padding: 4px 16px;
+      margin-bottom: 16px;
+    }
+    .header h1 {
+      font-size: clamp(24px, 6vw, 40px);
+      line-height: 1.4;
+      margin-bottom: 12px;
+    }
+    .header h1 span {
+      display: inline-block;
+      background: #fff133;
+      color: #c2185b;
+      border-radius: 6px;
+      padding: 0 6px;
+    }
+    .header .subtitle {
+      font-size: 16px;
+      opacity: 0.92;
+      margin-bottom: 20px;
+    }
+    .header .tag-row {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .header .tag {
+      background: rgba(255,255,255,0.25);
+      border: 1px solid rgba(255,255,255,0.6);
+      border-radius: 20px;
+      padding: 4px 14px;
+      font-size: 14px;
+    }
+
+    /* ===== 目次 ===== */
+    .toc {
+      background: #fdf3e7;
+      padding: 28px 20px;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    .toc h2 {
+      font-size: 18px;
+      color: #c2185b;
+      margin-bottom: 14px;
+      border-left: 4px solid #f06292;
+      padding-left: 10px;
+    }
+    .toc ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .toc ul li a {
+      color: #c2185b;
+      text-decoration: none;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .toc ul li a:hover { text-decoration: underline; }
+
+    /* ===== セクション共通 ===== */
+    .section {
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+    .section-title {
+      font-size: clamp(22px, 5vw, 28px);
+      color: #c2185b;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+    .section-title::after {
+      content: '';
+      display: block;
+      width: 60px;
+      height: 3px;
+      background: #f06292;
+      margin: 10px auto 0;
+      border-radius: 2px;
+    }
+
+    /* ===== 対話形式 ===== */
+    .chat { display: flex; flex-direction: column; gap: 20px; }
+    .chat-row { display: flex; align-items: flex-start; gap: 12px; }
+    .chat-row.right { flex-direction: row-reverse; }
+    .chat-bubble {
+      max-width: 75%;
+      padding: 14px 18px;
+      border-radius: 18px;
+      font-size: 16px;
+      line-height: 1.6;
+      position: relative;
+    }
+    .chat-row.left .chat-bubble {
+      background: #fff3e0;
+      border: 1.5px solid #ffcc80;
+      border-top-left-radius: 4px;
+    }
+    .chat-row.right .chat-bubble {
+      background: #fce4ec;
+      border: 1.5px solid #f48fb1;
+      border-top-right-radius: 4px;
+    }
+    .chat-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+    .chat-avatar-placeholder {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: #ffcc80;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+    .chat-name {
+      font-size: 12px;
+      color: #999;
+      margin-bottom: 4px;
+      text-align: center;
+    }
+
+    /* ===== ステップ形式 ===== */
+    .steps { display: flex; flex-direction: column; gap: 0; }
+    .step-item {
+      background: #fff;
+      border: 2px solid #f48fb1;
+      border-radius: 16px;
+      padding: 24px 22px;
+      margin-bottom: 10px;
+      position: relative;
+    }
+    .step-num {
+      display: inline-block;
+      background: #f06292;
+      color: #fff;
+      font-size: 13px;
+      font-weight: bold;
+      border-radius: 20px;
+      padding: 3px 14px;
+      margin-bottom: 10px;
+    }
+    .step-title {
+      font-size: 20px;
+      font-weight: bold;
+      color: #c2185b;
+      margin-bottom: 10px;
+    }
+    .step-body { font-size: 16px; line-height: 1.7; }
+    .step-arrow {
+      text-align: center;
+      font-size: 28px;
+      color: #f06292;
+      margin: 4px 0 4px;
+    }
+
+    /* ===== 献立カード ===== */
+    .meal-section-label {
+      display: inline-block;
+      background: #c2185b;
+      color: #fff;
+      font-size: 14px;
+      font-weight: bold;
+      border-radius: 20px;
+      padding: 4px 18px;
+      margin-bottom: 16px;
+    }
+    .meal-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .meal-card {
+      background: #fff;
+      border: 2px solid #f48fb1;
+      border-radius: 14px;
+      padding: 18px 16px;
+      transition: box-shadow 0.2s;
+    }
+    .meal-card:hover { box-shadow: 0 4px 16px rgba(240,98,146,0.18); }
+    .meal-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 10px;
+    }
+    .meal-day {
+      font-size: 13px;
+      font-weight: bold;
+      color: #f06292;
+      background: #fce4ec;
+      border-radius: 10px;
+      padding: 2px 10px;
+    }
+    .meal-type {
+      font-size: 12px;
+      color: #fff;
+      background: #aaa;
+      border-radius: 10px;
+      padding: 2px 10px;
+    }
+    .meal-type.morning { background: #ff9800; }
+    .meal-type.lunch { background: #4caf50; }
+    .meal-type.dinner { background: #3f51b5; }
+    .meal-name {
+      font-size: 17px;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 6px;
+      line-height: 1.4;
+    }
+    .meal-sub {
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 10px;
+      line-height: 1.5;
+    }
+    .meal-nutrition {
+      display: flex;
+      gap: 10px;
+    }
+    .nutrition-badge {
+      background: #fdf3e7;
+      border: 1px solid #ffcc80;
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-size: 12px;
+      color: #c2185b;
+      font-weight: bold;
+    }
+
+    /* ===== 注目レシピ ===== */
+    .recipe-card {
+      background: #fdf3e7;
+      border-left: 5px solid #f06292;
+      border-radius: 0 14px 14px 0;
+      padding: 20px 20px;
+      margin-bottom: 20px;
+    }
+    .recipe-card h3 {
+      font-size: 20px;
+      color: #c2185b;
+      margin-bottom: 8px;
+    }
+    .recipe-card .point {
+      font-size: 15px;
+      background: #fff;
+      border-radius: 10px;
+      padding: 8px 14px;
+      margin-top: 8px;
+      border: 1px solid #f48fb1;
+    }
+
+    /* ===== ハイライトボックス ===== */
+    .highlight-box {
+      background: #fce4ec;
+      border: 2px solid #f48fb1;
+      border-radius: 14px;
+      padding: 24px 20px;
+      margin: 24px 0;
+      text-align: center;
+    }
+    .highlight-box .big-num {
+      font-size: 48px;
+      font-weight: bold;
+      color: #c2185b;
+      line-height: 1.1;
+    }
+    .highlight-box p { font-size: 15px; margin-top: 8px; }
+
+    /* ===== まとめ ===== */
+    .summary-box {
+      background: linear-gradient(135deg, #fce4ec, #fdf3e7);
+      border-radius: 18px;
+      padding: 32px 24px;
+      margin-top: 8px;
+    }
+    .summary-box h3 {
+      font-size: 22px;
+      color: #c2185b;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .check-list { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+    .check-list li {
+      font-size: 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      line-height: 1.6;
+    }
+    .check-list li::before {
+      content: '✅';
+      font-size: 18px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    /* ===== CTAボタン ===== */
+    .cta-wrap { text-align: center; margin-top: 32px; }
+    .cta-btn {
+      display: inline-block;
+      background: linear-gradient(135deg, #f06292, #c2185b);
+      color: #fff;
+      font-size: 18px;
+      font-weight: bold;
+      text-decoration: none;
+      border-radius: 50px;
+      padding: 16px 36px;
+      box-shadow: 0 6px 20px rgba(194,24,91,0.3);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .cta-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 28px rgba(194,24,91,0.4);
+    }
+
+    /* ===== フッター ===== */
+    footer {
+      background: #333;
+      color: #ccc;
+      text-align: center;
+      padding: 24px 20px;
+      font-size: 13px;
+    }
+
+    /* ===== 区切り ===== */
+    .divider {
+      max-width: 700px;
+      margin: 0 auto;
+      border: none;
+      border-top: 2px dashed #f48fb1;
+    }
+
+    @media (max-width: 480px) {
+      .meal-grid { grid-template-columns: 1fr; }
+      .chat-bubble { max-width: 85%; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ヘッダー -->
+<header class="header">
+  <p class="label">保健師・ダイエット講師 松田リエ</p>
+  <h1>松田リエの<span>12kg</span>やせた！<br>1か月献立カレンダー</h1>
+  <p class="subtitle">ズボラテク満載！毎日の「何食べよう」が全部解決</p>
+  <div class="tag-row">
+    <span class="tag">雑穀米OK</span>
+    <span class="tag">レンチン活用</span>
+    <span class="tag">糖質&たんぱく質管理</span>
+    <span class="tag">1週目から実践可能</span>
+  </div>
+</header>
+
+<!-- 目次 -->
+<nav class="toc section">
+  <h2>目次</h2>
+  <ul>
+    <li><a href="#intro">📌 この献立カレンダーで何が変わる？</a></li>
+    <li><a href="#principle">🔑 ベルラス式3つの食事ルール</a></li>
+    <li><a href="#week1">🗓 1週目の献立カレンダー（昼・夜）</a></li>
+    <li><a href="#recipes">🍳 注目レシピ PickUp</a></li>
+    <li><a href="#summary">✅ 今日からやること まとめ</a></li>
+  </ul>
+</nav>
+<hr class="divider">
+
+<!-- イントロ：対話形式 -->
+<section class="section" id="intro">
+  <h2 class="section-title">この献立カレンダーで何が変わる？</h2>
+  <div class="chat">
+    <div class="chat-row left">
+      <div class="chat-avatar-placeholder">🙋‍♀️</div>
+      <div>
+        <p class="chat-name">読者さん（40代）</p>
+        <div class="chat-bubble">毎日の食事、何を食べたらいいか全然わからなくて…。<br>結局同じものばかりになってしまうんです。</div>
+      </div>
+    </div>
+    <div class="chat-row right">
+      <img src="rie.png" alt="松田リエ" class="chat-avatar">
+      <div>
+        <p class="chat-name">松田リエ</p>
+        <div class="chat-bubble">それ、すごくよくわかります！<br>だからこそ「1か月分の献立」をぜーんぶ用意しました😊<br>朝・昼・夜、月〜日の全メニューが揃ってるので、<strong>考えなくていい</strong>んです！</div>
+      </div>
+    </div>
+    <div class="chat-row left">
+      <div class="chat-avatar-placeholder">🙋‍♀️</div>
+      <div>
+        <p class="chat-name">読者さん（40代）</p>
+        <div class="chat-bubble">でも料理が面倒で続かないんですよね…。</div>
+      </div>
+    </div>
+    <div class="chat-row right">
+      <img src="rie.png" alt="松田リエ" class="chat-avatar">
+      <div>
+        <p class="chat-name">松田リエ</p>
+        <div class="chat-bubble">大丈夫！このカレンダーはズボラテク満載🙌<br>電子レンジだけで作れるおかず、缶詰をそのまま使うレシピ、<br>10分以内で完成するメニューだらけです。<br>忙しい日でも「できる食事」が必ず見つかります！</div>
+      </div>
+    </div>
+    <div class="chat-row left">
+      <div class="chat-avatar-placeholder">🙋‍♀️</div>
+      <div>
+        <p class="chat-name">読者さん（50代）</p>
+        <div class="chat-bubble">糖質制限は続けられなかったんですが、このカレンダーは大丈夫ですか？</div>
+      </div>
+    </div>
+    <div class="chat-row right">
+      <img src="rie.png" alt="松田リエ" class="chat-avatar">
+      <div>
+        <p class="chat-name">松田リエ</p>
+        <div class="chat-bubble">この献立は<strong>極端な糖質制限なし</strong>！<br>雑穀米をしっかり食べながら、たんぱく質とのバランスを整えるだけ。<br>毎食の糖質目安は約40〜50g。食べながらやせる仕組みです✨</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="highlight-box" style="margin-top:32px;">
+    <div class="big-num">1か月分</div>
+    <p>朝・昼・夜 × 7日間 × 4週 = 全84食分のメニューが収録！<br>「何を食べるか」に迷う時間がゼロになります。</p>
+  </div>
+</section>
+<hr class="divider">
+
+<!-- ベルラス式3つのルール -->
+<section class="section" id="principle">
+  <h2 class="section-title">ベルラス式 3つの食事ルール</h2>
+  <div class="steps">
+    <div class="step-item">
+      <span class="step-num">RULE 01</span>
+      <p class="step-title">主食は「雑穀米」で食べる</p>
+      <div class="step-body">
+        白米を雑穀米に変えるだけで、血糖値の急上昇を抑えられます。食物繊維・ミネラルも豊富で、食後の眠気や間食衝動も減らせます。量は減らさなくてOK！
+      </div>
+    </div>
+    <div class="step-arrow">▼</div>
+    <div class="step-item">
+      <span class="step-num">RULE 02</span>
+      <p class="step-title">毎食「たんぱく質」を20g以上とる</p>
+      <div class="step-body">
+        鶏むね肉・マグロ・サバ・サーモン・豆腐・納豆・卵を積極的に活用。たんぱく質をしっかりとることで筋肉量を維持し、代謝を落とさずにやせられます。<br><br>
+        <div class="chat" style="margin-top:12px;">
+          <div class="chat-row right">
+            <img src="rie.png" alt="松田リエ" class="chat-avatar">
+            <div>
+              <div class="chat-bubble">献立を見ると毎食たんぱく質が21〜25g目安！<br>「食べながらやせる」をカレンダーで自然に実現できます💪</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="step-arrow">▼</div>
+    <div class="step-item">
+      <span class="step-num">RULE 03</span>
+      <p class="step-title">みそ汁・スープで「発酵＋野菜」を補う</p>
+      <div class="step-body">
+        毎食、みそ汁やスープをプラス。腸内環境を整える発酵食品（みそ・納豆）と食物繊維（わかめ・きのこ・小松菜）を組み合わせることで、やせやすい体の土台を作ります。
+      </div>
+    </div>
+  </div>
+</section>
+<hr class="divider">
+
+<!-- 1週目 献立カレンダー -->
+<section class="section" id="week1">
+  <h2 class="section-title">1週目の献立カレンダー</h2>
+  <p style="text-align:center;font-size:15px;color:#666;margin-bottom:28px;">昼・夜の主要メニューと栄養バランス</p>
+
+  <!-- 月曜 -->
+  <div class="meal-section-label">月曜日 Monday</div>
+  <div class="meal-grid">
+    <div class="meal-card">
+      <div class="meal-card-header">
+        <span class="meal-day">月</span>
+        <span class="meal-type lunch">Lunch</span>
+      </div>
+      <p class="meal-name">鶏むね肉の塩麹焼き</p>
+      <p class="meal-sub">レタスと海苔のサラダ／豆腐とねぎのみそ汁／雑穀米</p>
+      <div class="meal-nutrition">
+        <span class="nutrition-badge">糖質 38.4g</span>
+        <span class="nutrition-badge">たんぱく質 22.8g</span>
+      </div>
+    </div>
+    <div class="meal-card">
+      <div class="meal-card-header">
+        <span class="meal-day">月</span>
+        <span class="meal-type dinner">Dinner</span>
+      </div>
+      <p class="meal-name">マグロ納豆のかつお節しょうゆのっけ丼</p>
+      <p class="meal-sub">小松菜とエリンギのかつお節しょうゆ和え／わかめとしめじのみそ汁</p>
+      <div class="meal-nutrition">
+        <span class="nutrition-badge">糖質 39.0g</span>
+        <span class="nutrition-badge">たんぱく質 22.0g</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 火曜 -->
+  <div class="meal-section-label">火曜日 Tuesday</div>
+  <div class="meal-grid">
+    <div class="meal-card">
+      <div class="meal-card-header">
+        <span class="meal-day">火</span>
+        <span class="meal-type lunch">Lunch</span>
+      </div>
+      <p class="meal-name">トマトチキンソテー</p>
+      <p class="meal-sub">レタスとエリンギの食物繊維スープ／雑穀米</p>
+      <div class="meal-nutrition">
+        <span class="nutrition-badge">糖質 48.8g</span>
+        <span class="nutrition-badge">たんぱく質 21.6g</span>
+      </div>
+    </div>
+    <div class="meal-card">
+      <div class="meal-card-header">
+        <span class="meal-day">火</span>
+        <span class="meal-type dinner">Dinner</span>
+      </div>
+      <p class="meal-name">キングサーモンときのこの包み蒸し</p>
+      <p class="meal-sub">キャベツの塩昆布和え／豆腐とえのきのみそ汁／雑穀米</p>
+      <div class="meal-nutrition">
+        <span class="nutrition-badge">糖質 43.0g</span>
+        <span class="nutrition-badge">たんぱく質 22.0g</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 水曜 -->
+  <div class="meal-section-label">水曜日 Wednesday</div>
+  <div class="meal-grid">
+    <div class="meal-card">
+      <div class="meal-card-header">
+        <span class="meal-day">水</span>
+        <span class="meal-type lunch">Lunch</span>
+      </div>
+      <p class="meal-name">やせるお茶漬け</p>
+      <p class="meal-sub">エリンギとしめじのきんぴら風／雑穀米</p>
+      <div class="meal-nutrition">
+        <span class="nutrition-badge">糖質 21.0g</span>
+        <span class="nutrition-badge">たんぱく質 21.1g</span>
+      </div>
+    </div>
+    <div class="meal-card">
+      <div class="meal-card-header">
+        <span class="meal-day">水</span>
+        <span class="meal-type dinner">Dinner</span>
+      </div>
+      <p class="meal-name">小松菜と豆腐の卵炒め＋シュウマイ</p>
+      <p class="meal-sub">トマトとわかめのみそ汁／雑穀米（レンチンおかず活用）</p>
+      <div class="meal-nutrition">
+        <span class="nutrition-badge">糖質 43.4g</span>
+        <span class="nutrition-badge">たんぱく質 24.5g</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 木曜 -->
+  <div class="meal-section-label">木曜日 Thursday</div>
+  <div class="meal-grid">
+    <div class="meal-card">
+      <div class="meal-card-header">
+        <span class="meal-day">木</span>
+        <span class="meal-type lunch">Lunch</span>
+      </div>
+      <p class="meal-name">牛肉のチミ漬け焼き</p>
+      <p class="meal-sub">もずくと豆腐のスープ／雑穀米</p>
+      <div class="meal-nutrition">
+        <span class="nutrition-badge">糖質 39.5g</span>
+        <span class="nutrition-badge">たんぱく質 19.4g</span>
+      </div>
+    </div>
+    <div class="meal-card">
+      <div class="meal-card-header">
+        <span class="meal-day">木</span>
+        <span class="meal-type dinner">Dinner</span>
+      </div>
+      <p class="meal-name">アサリとキャベツのミニトマト蒸し</p>
+      <p class="meal-sub">大根のデトックススープ／サバ缶の薬味のっけ／雑穀米</p>
+      <div class="meal-nutrition">
+        <span class="nutrition-badge">糖質 43.7g</span>
+        <span class="nutrition-badge">たんぱく質 21.6g</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 金曜 -->
+  <div class="meal-section-label">金曜日 Friday</div>
+  <div class="meal-grid">
+    <div class="meal-card">
+      <div class="meal-card-header">
+        <span class="meal-day">金</span>
+        <span class="meal-type lunch">Lunch</span>
+      </div>
+      <p class="meal-name">鶏むね肉とエリンギのレモンわさびソテー</p>
+      <p class="meal-sub">ブロッコリーのおかか和え／ミニトマトとレタスのスープ／雑穀米</p>
+      <div class="meal-nutrition">
+        <span class="nutrition-badge">糖質 39.6g</span>
+        <span class="nutrition-badge">たんぱく質 22.3g</span>
+      </div>
+    </div>
+    <div class="meal-card">
+      <div class="meal-card-header">
+        <span class="meal-day">金</span>
+        <span class="meal-type dinner">Dinner</span>
+      </div>
+      <p class="meal-name">イワシの缶詰と大根の煮物</p>
+      <p class="meal-sub">もずく納豆／玉ねぎとわかめと小松菜のみそ汁／雑穀米</p>
+      <div class="meal-nutrition">
+        <span class="nutrition-badge">糖質 44.8g</span>
+        <span class="nutrition-badge">たんぱく質 24.7g</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 土曜 -->
+  <div class="meal-section-label">土曜日 Saturday</div>
+  <div class="meal-grid">
+    <div class="meal-card">
+      <div class="meal-card-header">
+        <span class="meal-day">土</span>
+        <span class="meal-type lunch">Lunch</span>
+      </div>
+      <p class="meal-name">牛肉ときのこの卵とじ</p>
+      <p class="meal-sub">グリーンサラダ／なすのみそ汁／雑穀米</p>
+      <div class="meal-nutrition">
+        <span class="nutrition-badge">糖質 42.8g</span>
+        <span class="nutrition-badge">たんぱく質 22.3g</span>
+      </div>
+    </div>
+    <div class="meal-card">
+      <div class="meal-card-header">
+        <span class="meal-day">土</span>
+        <span class="meal-type dinner">Dinner</span>
+      </div>
+      <p class="meal-name">がりがりエビのオートミール炒飯</p>
+      <p class="meal-sub">ごまたっぷりわかめスープ（レンチンで簡単！）</p>
+      <div class="meal-nutrition">
+        <span class="nutrition-badge">糖質 14.8g</span>
+        <span class="nutrition-badge">たんぱく質 22.3g</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 日曜 -->
+  <div class="meal-section-label">日曜日 Sunday</div>
+  <div class="meal-grid">
+    <div class="meal-card">
+      <div class="meal-card-header">
+        <span class="meal-day">日</span>
+        <span class="meal-type lunch">Lunch</span>
+      </div>
+      <p class="meal-name">鶏ささみ肉となすのカレービカタ</p>
+      <p class="meal-sub">洋風きのこスープ／雑穀米</p>
+      <div class="meal-nutrition">
+        <span class="nutrition-badge">糖質 40.0g</span>
+        <span class="nutrition-badge">たんぱく質 23.1g</span>
+      </div>
+    </div>
+    <div class="meal-card">
+      <div class="meal-card-header">
+        <span class="meal-day">日</span>
+        <span class="meal-type dinner">Dinner</span>
+      </div>
+      <p class="meal-name">エビのねぎ塩エンドウ豆のパスタ風</p>
+      <p class="meal-sub">トマトとわかめのツナサラダ</p>
+      <div class="meal-nutrition">
+        <span class="nutrition-badge">糖質 31.8g</span>
+        <span class="nutrition-badge">たんぱく質 21.5g</span>
+      </div>
+    </div>
+  </div>
+</section>
+<hr class="divider">
+
+<!-- 注目レシピ -->
+<section class="section" id="recipes">
+  <h2 class="section-title">注目レシピ PickUp</h2>
+  <p style="text-align:center;font-size:15px;color:#666;margin-bottom:28px;">特に「やせスイッチON」なレシピをピックアップ！</p>
+
+  <div class="recipe-card">
+    <h3>🐟 キングサーモンときのこの包み蒸し</h3>
+    <p style="font-size:15px;">ホイルに包んでトースターorフライパンで蒸すだけ。洗い物ゼロのズボラテク最高峰。</p>
+    <div class="point">💡 <strong>やせポイント：</strong>サーモンのDHA・EPAが脂肪燃焼をサポート。きのこの食物繊維で腸内環境も整う。</div>
+  </div>
+
+  <div class="recipe-card">
+    <h3>🍚 やせるお茶漬け（水曜ランチ）</h3>
+    <p style="font-size:15px;">糖質なんと21g！ランチに摂りすぎた糖質をリセットしたいときに最適。</p>
+    <div class="point">💡 <strong>やせポイント：</strong>体が温まり代謝UP。さらさら食べられてよく噛む効果も。たんぱく質を具材で補うのがコツ。</div>
+  </div>
+
+  <div class="recipe-card">
+    <h3>🦐 がりがりエビのオートミール炒飯</h3>
+    <p style="font-size:15px;">お米の代わりにオートミールを使った炒飯。電子レンジで加熱後、フライパンで炒めるだけ！</p>
+    <div class="point">💡 <strong>やせポイント：</strong>糖質わずか14.8g！オートミールのβグルカンが腸を整え、エビのたんぱく質が筋肉を守る最強コンビ。</div>
+  </div>
+
+  <div class="recipe-card">
+    <h3>🐄 イワシの缶詰と大根の煮物</h3>
+    <p style="font-size:15px;">缶詰をそのまま使うから超時短。汁ごと使えば旨みも栄養も全部とれる。</p>
+    <div class="point">💡 <strong>やせポイント：</strong>イワシのDHA・EPAで脂肪燃焼＋発酵食品（みそ・納豆）をプラスして腸活パワーをブースト。</div>
+  </div>
+
+  <div class="chat" style="margin-top: 24px;">
+    <div class="chat-row right">
+      <img src="rie.png" alt="松田リエ" class="chat-avatar">
+      <div>
+        <p class="chat-name">松田リエ</p>
+        <div class="chat-bubble">缶詰・冷凍食品・レンチンおかずを上手に使うのが、忙しくても続けられるコツ💡<br>「完璧な料理」より「続けられる食事」の方が絶対に結果が出ます！</div>
+      </div>
+    </div>
+  </div>
+</section>
+<hr class="divider">
+
+<!-- まとめ + CTA -->
+<section class="section" id="summary">
+  <h2 class="section-title">今日からやること まとめ</h2>
+  <div class="summary-box">
+    <h3>📋 1週目スタートチェックリスト</h3>
+    <ul class="check-list">
+      <li>雑穀米を用意して、いつものご飯を置き換える</li>
+      <li>鶏むね肉・卵・豆腐・缶詰を常備して「たんぱく質ファースト」を意識する</li>
+      <li>毎食にみそ汁やスープをプラスして食物繊維&発酵食品を摂る</li>
+      <li>忙しい日はレンチンおかず・缶詰を迷わず使う（ズボラOK！）</li>
+      <li>糖質は1食40〜50gを目安に、極端な制限はしない</li>
+    </ul>
+    <div class="cta-wrap">
+      <a href="#" class="cta-btn">📩 LINEでもっと詳しく受け取る</a>
+    </div>
+  </div>
+</section>
+
+<!-- フッター -->
+<footer>
+  <p>© Belle Lus株式会社 / 松田リエ公式</p>
+  <p style="margin-top:6px;">本資料はLINE登録者向けの限定コンテンツです。無断転載・転用はご遠慮ください。</p>
+</footer>
+
+</body>
+</html>

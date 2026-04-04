@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>もえぞうタスク｜やりたいこと・方向性</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+  <script>mermaid.initialize({ startOnLoad: true, theme: "base", themeVariables: { primaryColor: "#eff6ff", primaryTextColor: "#1e3a8a", lineColor: "#2563eb" } });</script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "BIZ UDPGothic", sans-serif;
+      font-size: 16px;
+      line-height: 1.75;
+      color: #1e293b;
+      background: #ffffff;
+      word-break: keep-all;
+    }
+    .wrap { max-width: 860px; margin: 0 auto; padding: 48px 24px 80px; }
+    h1 {
+      font-size: clamp(1.5rem, 4vw, 1.85rem);
+      font-weight: 800;
+      color: #0f172a;
+      margin: 0 0 12px;
+      letter-spacing: -0.02em;
+    }
+    .meta {
+      font-size: 0.9rem;
+      color: #64748b;
+      margin-bottom: 40px;
+    }
+    h2 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: #1e40af;
+      margin: 48px 0 16px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #dbeafe;
+    }
+    h3 { font-size: 1.05rem; font-weight: 700; margin: 28px 0 10px; color: #334155; }
+    p { margin: 0 0 16px; }
+    ul { margin: 0 0 16px; padding-left: 1.25em; }
+    li { margin-bottom: 8px; }
+    .lead {
+      font-size: 1.05rem;
+      background: #f0f4ff;
+      border-radius: 12px;
+      padding: 20px 22px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      margin-bottom: 32px;
+      border: 1px solid #e0e7ff;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px 22px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      border: 1px solid #e2e8f0;
+    }
+    .card strong { color: #1d4ed8; }
+    .tag {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      margin-right: 6px;
+      margin-bottom: 6px;
+    }
+    .mermaid { margin: 24px 0; display: flex; justify-content: center; overflow-x: auto; }
+    .notes { margin-top: 40px; padding-top: 32px; border-top: 1px solid #e2e8f0; font-size: 0.88rem; color: #64748b; }
+    .notes dt { font-weight: 700; color: #475569; margin-top: 12px; }
+    .notes dd { margin: 4px 0 0; }
+    footer { margin-top: 48px; font-size: 0.82rem; color: #94a3b8; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>もえぞうタスク｜やりたいこと・方向性</h1>
+    <p class="meta">コンサル・案件向けタスク管理の整理資料 · 2026年3月28日</p>
+
+    <div class="lead">
+      <strong>目的：</strong>「チームの工数管理」ではなく、<strong>コンサル・クライアントワーク</strong>に寄せたタスクの見え方・運用にそろえていく。納期は大事だが、<strong>優先の語彙</strong>も揃えたい。
+    </div>
+
+    <h2>1. いまの方針（合意していること）</h2>
+    <ul>
+      <li>用途は<strong>コンサルメイン</strong>。従来の「チーム依頼フロー」中心のUIは外した。</li>
+      <li>Firebase プロジェクト <strong>moezoutask</strong> と既存 TeamBoard（task-91d08）は<strong>別物</strong>のまま運用。</li>
+      <li>タスクには<strong>追加した人の表示名</strong>（<code>creatorName</code>）を保存し、カード・詳細で見える。</li>
+    </ul>
+
+    <h2>2. すでに進めたこと（実装済みの方向）</h2>
+    <div class="card">
+      <span class="tag">認証</span>
+      <p style="margin:8px 0 0">管理者メールの新規登録（ブートストラップ）・メール正規化・Hosting のキャッシュ対策。</p>
+    </div>
+    <div class="card">
+      <span class="tag">UI</span>
+      <p style="margin:8px 0 0">カテゴリ・依頼者→担当者を削除。一覧はシンプルに。議事録→タスクも同じ前提で保存。</p>
+    </div>
+    <div class="card">
+      <span class="tag">体験</span>
+      <p style="margin:8px 0 0">タスク名入力のブラウザ履歴抑止など、入力まわりの細かい改善。</p>
+    </div>
+
+    <h2>3. 次に「やりたい」こと（検討・提案）</h2>
+    <h3>シグナルの見直し：納期ベース → コンサル向けラベル</h3>
+    <p>現状の<strong>危険・注意・順調</strong>は「期限までの日数 × 進捗」からの自動判定。工数・納品型には強いが、コンサルでは<strong>期限が緩くても重要</strong>・<strong>逆に定常</strong>などが混ざりやすい。</p>
+    <div class="card">
+      <strong>案：</strong>タスクに<strong>緊急 / 重要 / 定常</strong>（手動またはルール付き）を付け、一覧の色・フィルタの主軸にする。<br />
+      <strong>併用案：</strong>納期超過・本日期限は<strong>別バッジやアラート</strong>として残し、「優先度」と「日付リスク」の両方を見えるようにする。
+    </div>
+
+    <h3>決めると実装が速いポイント</h3>
+    <ul>
+      <li>優先度は<strong>手動選択のみ</strong>か、デフォルト（例：定常）からの変更か。</li>
+      <li><strong>緊急と重要</strong>の説明をツールチップや1行ヘルプで固定するか（運用ブレ防止）。</li>
+      <li>既存タスクの<strong>移行ルール</strong>（一括で「重要」等にするか、未設定を許すか）。</li>
+    </ul>
+
+    <h2>4. 全体像（マインドマップ）</h2>
+    <div class="mermaid">
+mindmap
+  root((もえぞうタスク))
+    いま
+      コンサル寄せUI
+      追加者名表示
+      認証まわり安定化
+    次
+      緊急重要定常
+      納期アラート併用
+      運用ルールの固定
+    守る
+      moezoutask単体
+      TeamBoardと分離
+    </div>
+
+    <h2>5. 進め方のイメージ（フロー）</h2>
+    <div class="mermaid">
+flowchart LR
+  A[優先ラベル案を決める] --> B[データ項目設計]
+  B --> C[一覧・フィルタ改修]
+  C --> D[既存タスク移行]
+  D --> E[使いながら微調整]
+    </div>
+
+    <section class="notes">
+      <h2 style="border:none;margin-top:0;padding:0;font-size:1rem;">補足</h2>
+      <dl>
+        <dt>この資料の位置づけ</dt>
+        <dd>チャット上の「やりたいこと」を1枚にまとめたもの。仕様書ではなく、合意形成・次アクション用のメモ。</dd>
+        <dt>公開URL</dt>
+        <dd>Surge でホスト。ブラウザから共有しやすい形。</dd>
+      </dl>
+    </section>
+
+    <footer>もえぞうタスク（solo-board）· moezoutask · 内部整理用</footer>
+  </div>
+</body>
+</html>
