@@ -22,26 +22,34 @@ export function BoardHeader({
   deletingAll,
   onDeleteAllClick,
 }: BoardHeaderProps) {
-  const [desc, setDesc] = useState(description ?? "");
+  const [goal, setGoal] = useState(description ?? "");
+  const [editing, setEditing] = useState(!description); // 未設定なら最初から入力モード
+  const [draft, setDraft] = useState(description ?? "");
   const [saving, setSaving] = useState(false);
 
-  const saveDescription = async () => {
-    if (!roadmapId) return;
+  const handleConfirm = async () => {
+    if (!roadmapId || !draft.trim()) return;
     setSaving(true);
     const supabase = createClient();
     await supabase
       .from("roadmaps")
-      .update({ description: desc || null })
+      .update({ description: draft.trim() })
       .eq("id", roadmapId);
+    setGoal(draft.trim());
+    setEditing(false);
     setSaving(false);
+  };
+
+  const handleEdit = () => {
+    setDraft(goal);
+    setEditing(true);
   };
 
   return (
     <div className="mb-6">
+      {/* ボタン行 */}
       <div className="flex items-start justify-between gap-4 mb-4">
-        {/* 左：何も表示しない（目標は下の編集欄が主役） */}
         <div className="flex-1" />
-
         <div className="flex items-center gap-2 shrink-0">
           {isAdmin && hasRoadmap && (
             <button
@@ -72,36 +80,83 @@ export function BoardHeader({
         </div>
       </div>
 
-      {/* 目標欄 */}
+      {/* 目標エリア */}
       {hasRoadmap && (
-        <div
-          className="rounded-xl p-4"
-          style={{ background: "#1a1d27", border: "1px solid #2e3347" }}
-        >
-          <p className="text-xs font-medium mb-2" style={{ color: "#6c63ff" }}>
-            🎯 ロードマップの目標
-          </p>
-          {isAdmin ? (
-            <>
-              <textarea
-                value={desc}
-                onChange={(e) => setDesc(e.target.value)}
-                onBlur={saveDescription}
-                placeholder="このロードマップのゴールや育成方針を入力してください..."
-                rows={2}
-                className="w-full text-sm outline-none resize-none"
-                style={{ background: "transparent", color: "#e2e8f0" }}
-              />
-              {saving && (
-                <span className="text-xs" style={{ color: "#4a5568" }}>保存中...</span>
-              )}
-            </>
-          ) : (
-            <p className="text-sm leading-relaxed" style={{ color: desc ? "#e2e8f0" : "#4a5568" }}>
-              {desc || "（未設定）"}
-            </p>
+        <>
+          {/* 目標設定済み・表示モード */}
+          {!editing && goal && (
+            <div
+              className="rounded-xl px-5 py-4 flex items-start justify-between gap-4"
+              style={{ background: "#1a1d27", border: "1px solid #2e3347" }}
+            >
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium mb-1.5" style={{ color: "#6c63ff" }}>
+                  🎯 ロードマップの目標
+                </p>
+                <p className="text-base font-semibold leading-relaxed" style={{ color: "#e2e8f0" }}>
+                  {goal}
+                </p>
+              </div>
+              <button
+                onClick={handleEdit}
+                className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium"
+                style={{
+                  background: "rgba(108,99,255,0.12)",
+                  border: "1px solid rgba(108,99,255,0.3)",
+                  color: "#6c63ff",
+                }}
+              >
+                編集
+              </button>
+            </div>
           )}
-        </div>
+
+          {/* 編集モード（未設定 or 編集中） */}
+          {editing && (
+            <div
+              className="rounded-xl px-5 py-4"
+              style={{ background: "#1a1d27", border: "1px solid rgba(108,99,255,0.4)" }}
+            >
+              <p className="text-xs font-medium mb-2" style={{ color: "#6c63ff" }}>
+                🎯 ロードマップの目標を設定する
+              </p>
+              <textarea
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleConfirm();
+                }}
+                placeholder="例）3ヶ月以内に一人で架電〜クロージングまで完結できる営業担当者になる"
+                rows={2}
+                autoFocus
+                className="w-full text-sm outline-none resize-none mb-3"
+                style={{ background: "transparent", color: "#e2e8f0", lineHeight: "1.7" }}
+              />
+              <div className="flex items-center gap-2 justify-end">
+                {goal && (
+                  <button
+                    onClick={() => setEditing(false)}
+                    className="px-3 py-1.5 rounded-lg text-xs"
+                    style={{ background: "#232636", color: "#64748b" }}
+                  >
+                    キャンセル
+                  </button>
+                )}
+                <button
+                  onClick={handleConfirm}
+                  disabled={!draft.trim() || saving}
+                  className="px-4 py-1.5 rounded-lg text-xs font-bold transition-all"
+                  style={{
+                    background: draft.trim() ? "linear-gradient(135deg, #6c63ff, #5b52ee)" : "#232636",
+                    color: draft.trim() ? "#fff" : "#4a5568",
+                  }}
+                >
+                  {saving ? "保存中..." : "決定"}
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
