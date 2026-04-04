@@ -38,32 +38,28 @@ export default function ProfileModal({ member, onClose, onUpdated }: ProfileModa
     setError(null);
     setUploading(true);
 
+    // プレビューを即時表示
     const objectUrl = URL.createObjectURL(file);
     setPreview(objectUrl);
 
-    const supabase = createClient();
-    const ext = file.name.split(".").pop();
-    const path = `avatars/${member.id}.${ext}`;
+    // サーバー経由でアップロード
+    const formData = new FormData();
+    formData.append("file", file);
 
-    const { error: uploadError } = await supabase.storage
-      .from("avatars")
-      .upload(path, file, { upsert: true });
+    const res = await fetch("/api/sugoroku/upload-avatar", {
+      method: "POST",
+      body: formData,
+    });
 
-    if (uploadError) {
-      setError("アップロードに失敗しました: " + uploadError.message);
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.error ?? "アップロードに失敗しました");
+      setPreview(member.avatar_url ?? null);
       setUploading(false);
       return;
     }
 
-    const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
-    const publicUrl = urlData.publicUrl;
-
-    await supabase
-      .from("members")
-      .update({ avatar_url: publicUrl })
-      .eq("id", member.id);
-
-    onUpdated(publicUrl);
+    onUpdated(data.url);
     setUploading(false);
   };
 
