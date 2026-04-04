@@ -141,6 +141,35 @@ export default function TaskDetailPanel({ task, allTasks, onClose }: TaskDetailP
   // コメントサブパネル
   const [commentSubTask, setCommentSubTask] = useState<Task | null>(null);
 
+  // 差し戻し / 承認コメント
+  const [rejectionComment, setRejectionComment] = useState<string | null>(null);
+  const [approvalMessage, setApprovalMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (largeStatus !== "needs_revision" && largeStatus !== "done") {
+      setRejectionComment(null);
+      setApprovalMessage(null);
+      return;
+    }
+    const targetStatus = largeStatus === "needs_revision" ? "rejected" : "approved";
+    const supabase = createClient();
+    supabase
+      .from("approval_requests")
+      .select("comment, reviewed_at")
+      .eq("task_id", task.id)
+      .eq("status", targetStatus)
+      .order("reviewed_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (largeStatus === "needs_revision") {
+          setRejectionComment(data?.comment ?? null);
+        } else {
+          setApprovalMessage(data?.comment ?? null);
+        }
+      });
+  }, [task.id, largeStatus]);
+
   // dnd-kit センサー（長押し400ms）
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { delay: 400, tolerance: 8 } }),
@@ -1124,6 +1153,21 @@ export default function TaskDetailPanel({ task, allTasks, onClose }: TaskDetailP
             </div>
           )}
 
+          {/* 差し戻しコメント */}
+          {largeStatus === "needs_revision" && rejectionComment && (
+            <div
+              className="rounded-xl p-4"
+              style={{ background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.3)" }}
+            >
+              <p className="text-xs font-medium mb-1" style={{ color: "#f87171" }}>
+                ⚠️ 差し戻しコメント
+              </p>
+              <p className="text-xs whitespace-pre-wrap" style={{ color: "#fca5a5" }}>
+                {rejectionComment}
+              </p>
+            </div>
+          )}
+
           {/* 完了メッセージ */}
           {largeStatus === "done" && (
             <div
@@ -1133,6 +1177,11 @@ export default function TaskDetailPanel({ task, allTasks, onClose }: TaskDetailP
               <p className="text-xs font-medium" style={{ color: "#4ade80" }}>
                 🎉 このマスは完了しました！
               </p>
+              {approvalMessage && (
+                <p className="text-xs mt-2 whitespace-pre-wrap" style={{ color: "#86efac" }}>
+                  管理者コメント: {approvalMessage}
+                </p>
+              )}
             </div>
           )}
 

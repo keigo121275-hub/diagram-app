@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Member, Task } from "@/lib/supabase/types";
@@ -52,6 +52,33 @@ export default function SugorokuBoard({
   const [showDailyReport, setShowDailyReport] = useState(false);
 
   const activeMemberId = isAdmin ? selectedMemberId : (currentMember?.id ?? "");
+
+  // Supabase Realtime: アクティブなロードマップのタスク変更を購読
+  useEffect(() => {
+    const activeRoadmap = roadmaps.find((r) => r.member_id === activeMemberId);
+    if (!activeRoadmap) return;
+
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`tasks:roadmap:${activeRoadmap.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "tasks",
+          filter: `roadmap_id=eq.${activeRoadmap.id}`,
+        },
+        () => {
+          router.refresh();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [activeMemberId, roadmaps, router]);
   const activeMember = isAdmin
     ? (allMembers.find((m) => m.id === activeMemberId) ?? currentMember)
     : currentMember;

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Member } from "@/lib/supabase/types";
+import ProfileModal from "./ProfileModal";
 
 interface NavbarProps {
   member: Member | null;
@@ -13,6 +14,8 @@ export default function Navbar({ member }: NavbarProps) {
   const router = useRouter();
   const [pendingCount, setPendingCount] = useState(0);
   const [revisionCount, setRevisionCount] = useState(0);
+  const [showProfile, setShowProfile] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(member?.avatar_url ?? null);
 
   useEffect(() => {
     if (!member) return;
@@ -53,6 +56,7 @@ export default function Navbar({ member }: NavbarProps) {
   const initials = member?.name ? member.name.slice(0, 2).toUpperCase() : "??";
 
   return (
+    <>
     <nav
       className="sticky top-0 z-40 px-6 py-3 flex items-center justify-between"
       style={{
@@ -151,27 +155,34 @@ export default function Navbar({ member }: NavbarProps) {
 
         {/* アバター */}
         <div className="flex items-center gap-2">
-          {member?.avatar_url ? (
-            <img
-              src={member.avatar_url}
-              alt={member.name}
-              className="w-8 h-8 rounded-full object-cover"
-              style={{ border: "2px solid #2e3347" }}
-            />
-          ) : (
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold"
-              style={{
-                background: "linear-gradient(135deg, #6c63ff, #4ade80)",
-                color: "#fff",
-              }}
-            >
-              {initials}
-            </div>
-          )}
-          <span className="text-sm" style={{ color: "#e2e8f0" }}>
-            {member?.name ?? "ゲスト"}
-          </span>
+          <button
+            onClick={() => member && setShowProfile(true)}
+            className="flex items-center gap-2 rounded-full transition-opacity hover:opacity-80"
+            style={{ cursor: member ? "pointer" : "default" }}
+            title="プロフィール編集"
+          >
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={member?.name ?? "avatar"}
+                className="w-8 h-8 rounded-full object-cover"
+                style={{ border: "2px solid #2e3347" }}
+              />
+            ) : (
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold"
+                style={{
+                  background: "linear-gradient(135deg, #6c63ff, #4ade80)",
+                  color: "#fff",
+                }}
+              >
+                {initials}
+              </div>
+            )}
+            <span className="text-sm" style={{ color: "#e2e8f0" }}>
+              {member?.name ?? "ゲスト"}
+            </span>
+          </button>
         </div>
 
         <button
@@ -185,5 +196,17 @@ export default function Navbar({ member }: NavbarProps) {
         </button>
       </div>
     </nav>
+
+    {showProfile && member && (
+      <ProfileModal
+        member={{ ...member, avatar_url: avatarUrl }}
+        onClose={() => setShowProfile(false)}
+        onUpdated={(url) => {
+          setAvatarUrl(url);
+          setShowProfile(false);
+        }}
+      />
+    )}
+  </>
   );
 }

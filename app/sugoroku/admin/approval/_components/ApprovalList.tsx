@@ -14,6 +14,8 @@ export default function ApprovalList({ items }: ApprovalListProps) {
   const [processing, setProcessing] = useState<string | null>(null);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectComment, setRejectComment] = useState("");
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [approveComment, setApproveComment] = useState("");
   const [localItems, setLocalItems] = useState<ApprovalItem[]>(items);
 
   const handleApprove = async (item: ApprovalItem) => {
@@ -23,7 +25,12 @@ export default function ApprovalList({ items }: ApprovalListProps) {
 
     await supabase
       .from("approval_requests")
-      .update({ status: "approved", reviewed_by: user?.id, reviewed_at: new Date().toISOString() })
+      .update({
+        status: "approved",
+        reviewed_by: user?.id,
+        reviewed_at: new Date().toISOString(),
+        ...(approveComment.trim() ? { comment: approveComment.trim() } : {}),
+      })
       .eq("id", item.id);
 
     await supabase
@@ -32,6 +39,8 @@ export default function ApprovalList({ items }: ApprovalListProps) {
       .eq("id", item.task_id);
 
     setLocalItems((prev) => prev.filter((i) => i.id !== item.id));
+    setApprovingId(null);
+    setApproveComment("");
     setProcessing(null);
     router.refresh();
   };
@@ -140,22 +149,68 @@ export default function ApprovalList({ items }: ApprovalListProps) {
             </div>
           )}
 
+          {/* 承認コメント入力欄（オプション） */}
+          {approvingId === item.id && (
+            <div
+              className="rounded-xl p-3 mb-4"
+              style={{ background: "#0f1f0f", border: "1px solid rgba(74,222,128,0.3)" }}
+            >
+              <p className="text-xs mb-2" style={{ color: "#4ade80" }}>
+                承認コメント（任意）
+              </p>
+              <textarea
+                value={approveComment}
+                onChange={(e) => setApproveComment(e.target.value)}
+                placeholder="メンバーへのフィードバックや一言を入力..."
+                rows={3}
+                autoFocus
+                className="w-full px-3 py-2 rounded-lg text-xs outline-none resize-none"
+                style={{
+                  background: "#232636",
+                  border: "1px solid #2e3347",
+                  color: "#e2e8f0",
+                }}
+              />
+            </div>
+          )}
+
           {/* アクションボタン */}
           <div className="flex gap-2">
-            <button
-              onClick={() => handleApprove(item)}
-              disabled={processing === item.id || rejectingId === item.id}
-              className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all"
-              style={{
-                background: processing === item.id
-                  ? "#232636"
-                  : "linear-gradient(135deg, #4ade80, #22c55e)",
-                color: processing === item.id ? "#4a5568" : "#fff",
-                opacity: rejectingId === item.id ? 0.5 : 1,
-              }}
-            >
-              {processing === item.id ? "処理中..." : "✅ 承認する"}
-            </button>
+            {approvingId === item.id ? (
+              <>
+                <button
+                  onClick={() => handleApprove(item)}
+                  disabled={processing === item.id}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all"
+                  style={{
+                    background: processing === item.id ? "#232636" : "linear-gradient(135deg, #4ade80, #22c55e)",
+                    color: processing === item.id ? "#4a5568" : "#fff",
+                  }}
+                >
+                  {processing === item.id ? "処理中..." : "承認を確定する"}
+                </button>
+                <button
+                  onClick={() => { setApprovingId(null); setApproveComment(""); }}
+                  className="px-4 py-2.5 rounded-xl text-sm"
+                  style={{ background: "#232636", color: "#64748b" }}
+                >
+                  キャンセル
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => setApprovingId(item.id)}
+                disabled={processing === item.id || rejectingId === item.id}
+                className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all"
+                style={{
+                  background: "linear-gradient(135deg, #4ade80, #22c55e)",
+                  color: "#fff",
+                  opacity: rejectingId === item.id ? 0.5 : 1,
+                }}
+              >
+                ✅ 承認する
+              </button>
+            )}
 
             {rejectingId === item.id ? (
               <>
