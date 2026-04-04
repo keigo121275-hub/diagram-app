@@ -41,18 +41,21 @@ export interface Database {
           id: string;
           member_id: string;
           title: string;
+          description: string | null;
           created_at: string;
         };
         Insert: {
           id?: string;
           member_id: string;
           title: string;
+          description?: string | null;
           created_at?: string;
         };
         Update: {
           id?: string;
           member_id?: string;
           title?: string;
+          description?: string | null;
           created_at?: string;
         };
         Relationships: [];
@@ -67,6 +70,8 @@ export interface Database {
           order: number | null;
           status: "todo" | "in_progress" | "pending_approval" | "done" | "needs_revision";
           due_date: string | null;
+          deliverable_note: string | null;
+          description: string | null;
           created_by: string | null;
           created_at: string;
         };
@@ -79,6 +84,8 @@ export interface Database {
           order?: number | null;
           status?: "todo" | "in_progress" | "pending_approval" | "done" | "needs_revision";
           due_date?: string | null;
+          deliverable_note?: string | null;
+          description?: string | null;
           created_by?: string | null;
           created_at?: string;
         };
@@ -91,6 +98,8 @@ export interface Database {
           order?: number | null;
           status?: "todo" | "in_progress" | "pending_approval" | "done" | "needs_revision";
           due_date?: string | null;
+          deliverable_note?: string | null;
+          description?: string | null;
           created_by?: string | null;
           created_at?: string;
         };
@@ -153,6 +162,33 @@ export interface Database {
         };
         Relationships: [];
       };
+      daily_reports: {
+        Row: {
+          id: string;
+          member_id: string | null;
+          roadmap_id: string | null;
+          body: string;
+          date: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          member_id?: string | null;
+          roadmap_id?: string | null;
+          body: string;
+          date?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          member_id?: string | null;
+          roadmap_id?: string | null;
+          body?: string;
+          date?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       roadmap_generations: {
         Row: {
           id: string;
@@ -198,6 +234,7 @@ export type Roadmap = Database["public"]["Tables"]["roadmaps"]["Row"];
 export type Task = Database["public"]["Tables"]["tasks"]["Row"];
 export type ApprovalRequest = Database["public"]["Tables"]["approval_requests"]["Row"];
 export type Comment = Database["public"]["Tables"]["comments"]["Row"];
+export type DailyReport = Database["public"]["Tables"]["daily_reports"]["Row"];
 export type RoadmapGeneration = Database["public"]["Tables"]["roadmap_generations"]["Row"];
 
 export type TaskStatus = Task["status"];

@@ -9,11 +9,13 @@ import { DeleteConfirmDialog } from "./DeleteConfirmDialog";
 import { MemberTabs } from "./MemberTabs";
 import { ProgressBar } from "./ProgressBar";
 import { SugorokuGrid } from "./SugorokuGrid";
+import { DailyReportModal } from "./DailyReportModal";
 
 interface RoadmapWithTasks {
   id: string;
   member_id: string;
   title: string;
+  description: string | null;
   created_at: string;
   tasks: Task[];
 }
@@ -47,6 +49,7 @@ export default function SugorokuBoard({
   const [deletingAll, setDeletingAll] = useState(false);
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
   const [localTasksMap, setLocalTasksMap] = useState<Record<string, Task[]>>({});
+  const [showDailyReport, setShowDailyReport] = useState(false);
 
   const activeMemberId = isAdmin ? selectedMemberId : (currentMember?.id ?? "");
   const activeMember = isAdmin
@@ -112,7 +115,9 @@ export default function SugorokuBoard({
   return (
     <div>
       <BoardHeader
+        roadmapId={roadmap?.id ?? null}
         title={roadmap?.title ?? "ロードマップ"}
+        description={roadmap?.description ?? null}
         isAdmin={isAdmin}
         hasRoadmap={!!roadmap}
         deletingAll={deletingAll}
@@ -185,6 +190,31 @@ export default function SugorokuBoard({
             </div>
           )}
         </div>
+      )}
+
+      {/* 日報モーダル（メンバー） */}
+      {showDailyReport && roadmap && currentMember && !isAdmin && (
+        <DailyReportModal
+          roadmapId={roadmap.id}
+          memberId={currentMember.id}
+          onClose={() => setShowDailyReport(false)}
+          onSubmitted={() => setShowDailyReport(false)}
+        />
+      )}
+
+      {/* 日報ボタン（メンバーのみ、右下固定） */}
+      {!isAdmin && roadmap && (
+        <button
+          onClick={() => setShowDailyReport(true)}
+          className="fixed bottom-6 right-6 z-30 flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-bold shadow-lg"
+          style={{
+            background: "linear-gradient(135deg, #6c63ff, #5a52e8)",
+            color: "#fff",
+            boxShadow: "0 8px 24px rgba(108,99,255,0.4)",
+          }}
+        >
+          📝 日報を書く
+        </button>
       )}
     </div>
   );

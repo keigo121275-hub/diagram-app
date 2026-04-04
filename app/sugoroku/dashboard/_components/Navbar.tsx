@@ -12,16 +12,36 @@ interface NavbarProps {
 export default function Navbar({ member }: NavbarProps) {
   const router = useRouter();
   const [pendingCount, setPendingCount] = useState(0);
+  const [revisionCount, setRevisionCount] = useState(0);
 
   useEffect(() => {
-    if (member?.role !== "admin") return;
+    if (!member) return;
     const supabase = createClient();
-    supabase
-      .from("approval_requests")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "pending")
-      .then(({ count }) => setPendingCount(count ?? 0));
-  }, [member?.role]);
+
+    if (member.role === "admin") {
+      supabase
+        .from("approval_requests")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pending")
+        .then(({ count }) => setPendingCount(count ?? 0));
+    } else {
+      // メンバー: 自分のロードマップの「要修正」タスク数を取得
+      supabase
+        .from("roadmaps")
+        .select("id")
+        .eq("member_id", member.id)
+        .single()
+        .then(({ data: roadmap }) => {
+          if (!roadmap) return;
+          supabase
+            .from("tasks")
+            .select("id", { count: "exact", head: true })
+            .eq("roadmap_id", roadmap.id)
+            .eq("status", "needs_revision")
+            .then(({ count }) => setRevisionCount(count ?? 0));
+        });
+    }
+  }, [member]);
 
   const handleLogout = async () => {
     const supabase = createClient();
@@ -30,9 +50,7 @@ export default function Navbar({ member }: NavbarProps) {
     router.refresh();
   };
 
-  const initials = member?.name
-    ? member.name.slice(0, 2).toUpperCase()
-    : "??";
+  const initials = member?.name ? member.name.slice(0, 2).toUpperCase() : "??";
 
   return (
     <nav
@@ -66,8 +84,26 @@ export default function Navbar({ member }: NavbarProps) {
 
       {/* 右側メニュー */}
       <div className="flex items-center gap-4">
-        {member?.role === "admin" && (
+        {member?.role === "admin" ? (
           <div className="flex items-center gap-4">
+            <a
+              href="/sugoroku/admin/progress"
+              className="text-sm transition-colors"
+              style={{ color: "#94a3b8" }}
+              onMouseOver={(e) => (e.currentTarget.style.color = "#e2e8f0")}
+              onMouseOut={(e) => (e.currentTarget.style.color = "#94a3b8")}
+            >
+              進捗概要
+            </a>
+            <a
+              href="/sugoroku/admin/daily-reports"
+              className="text-sm transition-colors"
+              style={{ color: "#94a3b8" }}
+              onMouseOver={(e) => (e.currentTarget.style.color = "#e2e8f0")}
+              onMouseOut={(e) => (e.currentTarget.style.color = "#94a3b8")}
+            >
+              日報一覧
+            </a>
             <a
               href="/sugoroku/admin/members"
               className="text-sm transition-colors"
@@ -94,6 +130,22 @@ export default function Navbar({ member }: NavbarProps) {
                 </span>
               )}
             </a>
+          </div>
+        ) : (
+          /* メンバー向け: 要修正バッジ + 日報ボタン */
+          <div className="flex items-center gap-3">
+            {revisionCount > 0 && (
+              <span
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold"
+                style={{
+                  background: "rgba(248,113,113,0.15)",
+                  border: "1px solid rgba(248,113,113,0.3)",
+                  color: "#f87171",
+                }}
+              >
+                ⚠️ 要修正 {revisionCount}件
+              </span>
+            )}
           </div>
         )}
 
@@ -125,17 +177,9 @@ export default function Navbar({ member }: NavbarProps) {
         <button
           onClick={handleLogout}
           className="text-xs px-3 py-1.5 rounded-lg transition-all"
-          style={{
-            background: "#232636",
-            color: "#94a3b8",
-            border: "1px solid #2e3347",
-          }}
-          onMouseOver={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.color = "#e2e8f0";
-          }}
-          onMouseOut={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.color = "#94a3b8";
-          }}
+          style={{ background: "#232636", color: "#94a3b8", border: "1px solid #2e3347" }}
+          onMouseOver={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#e2e8f0"; }}
+          onMouseOut={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#94a3b8"; }}
         >
           ログアウト
         </button>

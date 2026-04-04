@@ -8,6 +8,7 @@ type RoadmapWithTasks = {
   id: string;
   member_id: string;
   title: string;
+  description: string | null;
   created_at: string;
   tasks: Task[];
 };
