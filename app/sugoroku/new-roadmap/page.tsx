@@ -80,7 +80,19 @@ export default function NewRoadmapPage() {
     setError(null);
     const supabase = createClient();
 
-    // 1. ロードマップを作成
+    // 1. 既存ロードマップを削除（上書き生成）
+    const { data: existing } = await supabase
+      .from("roadmaps")
+      .select("id")
+      .eq("member_id", selectedMemberId);
+    if (existing && existing.length > 0) {
+      await supabase
+        .from("roadmaps")
+        .delete()
+        .in("id", existing.map((r) => r.id));
+    }
+
+    // 2. ロードマップを作成
     const { data: roadmap, error: rmErr } = await supabase
       .from("roadmaps")
       .insert({ member_id: selectedMemberId, title: result.roadmap_title, description: goal || null })

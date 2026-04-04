@@ -41,7 +41,7 @@ export default async function DashboardPage() {
   const roadmapsResult = await supabase
     .from("roadmaps")
     .select("*, tasks(*)")
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: false });
   const roadmaps = (roadmapsResult.data ?? []) as unknown as RoadmapWithTasks[];
 
   return (
