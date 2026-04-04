@@ -18,13 +18,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { name, email, password } = await request.json();
+  const { name, email, password, role } = await request.json();
   if (!name || !email || !password) {
     return NextResponse.json({ error: "名前・メール・パスワードは必須です" }, { status: 400 });
   }
   if (password.length < 6) {
     return NextResponse.json({ error: "パスワードは6文字以上にしてください" }, { status: 400 });
   }
+
+  const assignedRole: "admin" | "member" =
+    (role === "admin" && user.email === "keigo121275@gmail.com") ? "admin" : "member";
 
   // service_role キーで管理者クライアントを作成
   const adminClient = createClient(
@@ -45,11 +48,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: createError.message }, { status: 400 });
   }
 
-  // DB トリガーが走るまで少し待ってから name を更新
+  // DB トリガーが走るまで少し待ってから name と role を更新
   await new Promise((r) => setTimeout(r, 500));
   await adminClient
     .from("members")
-    .update({ name })
+    .update({ name, role: assignedRole })
     .eq("id", newUser.user.id);
 
   return NextResponse.json({ success: true, userId: newUser.user.id });

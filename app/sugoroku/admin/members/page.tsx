@@ -34,7 +34,7 @@ export default async function MembersPage() {
             新しいメンバーを追加したり、既存メンバーを確認できます
           </p>
         </div>
-        <MemberManager members={(allMembers ?? []) as Member[]} />
+        <MemberManager members={(allMembers ?? []) as Member[]} currentUserEmail={user.email ?? ""} />
       </main>
     </div>
   );

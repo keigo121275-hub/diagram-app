@@ -4,20 +4,26 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Member } from "@/lib/supabase/types";
 
+const SUPER_ADMIN_EMAIL = "keigo121275@gmail.com";
+
 interface MemberManagerProps {
   members: Member[];
+  currentUserEmail: string;
 }
 
-export default function MemberManager({ members }: MemberManagerProps) {
+export default function MemberManager({ members, currentUserEmail }: MemberManagerProps) {
   const router = useRouter();
+  const isSuperAdmin = currentUserEmail === SUPER_ADMIN_EMAIL;
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState<"member" | "admin">("member");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [updatingRoleId, setUpdatingRoleId] = useState<string | null>(null);
 
   const handleDelete = async (target: Member) => {
     if (!confirm(`「${target.name}」を削除しますか？\nロードマップ・タスクも全て削除されます。`)) return;
@@ -36,6 +42,23 @@ export default function MemberManager({ members }: MemberManagerProps) {
     setDeletingId(null);
   };
 
+  const handleRoleChange = async (target: Member, newRole: "admin" | "member") => {
+    if (!confirm(`「${target.name}」のロールを「${newRole === "admin" ? "管理者" : "メンバー"}」に変更しますか？`)) return;
+    setUpdatingRoleId(target.id);
+    const res = await fetch("/api/sugoroku/update-member-role", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ targetUserId: target.id, role: newRole }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error ?? "ロール変更に失敗しました");
+    } else {
+      router.refresh();
+    }
+    setUpdatingRoleId(null);
+  };
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -45,7 +68,7 @@ export default function MemberManager({ members }: MemberManagerProps) {
     const res = await fetch("/api/sugoroku/create-member", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password }),
+      body: JSON.stringify({ name, email, password, role: isSuperAdmin ? role : "member" }),
     });
 
     const data = await res.json();
@@ -56,6 +79,7 @@ export default function MemberManager({ members }: MemberManagerProps) {
       setName("");
       setEmail("");
       setPassword("");
+      setRole("member");
       router.refresh();
     }
     setLoading(false);
@@ -164,6 +188,34 @@ export default function MemberManager({ members }: MemberManagerProps) {
             </div>
           </div>
 
+          {/* スーパー管理者のみロール選択を表示 */}
+          {isSuperAdmin && (
+            <div>
+              <label className="block text-xs mb-1" style={{ color: "#94a3b8" }}>
+                ロール
+              </label>
+              <div className="flex gap-2">
+                {(["member", "admin"] as const).map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setRole(r)}
+                    className="flex-1 py-2 rounded-xl text-xs font-medium transition-all"
+                    style={{
+                      background: role === r
+                        ? (r === "admin" ? "rgba(108,99,255,0.25)" : "rgba(74,222,128,0.15)")
+                        : "#232636",
+                      border: `1px solid ${role === r ? (r === "admin" ? "#6c63ff" : "#4ade80") : "#2e3347"}`,
+                      color: role === r ? (r === "admin" ? "#6c63ff" : "#4ade80") : "#64748b",
+                    }}
+                  >
+                    {r === "admin" ? "管理者" : "メンバー"}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={loading}
@@ -234,6 +286,27 @@ export default function MemberManager({ members }: MemberManagerProps) {
                 >
                   {m.role === "admin" ? "管理者" : "メンバー"}
                 </span>
+
+                {/* スーパー管理者のみロール変更ボタンを表示 */}
+                {isSuperAdmin && m.email !== SUPER_ADMIN_EMAIL && (
+                  <button
+                    onClick={() => handleRoleChange(m, m.role === "admin" ? "member" : "admin")}
+                    disabled={updatingRoleId === m.id}
+                    className="px-2.5 py-1 rounded-lg text-xs font-medium shrink-0 transition-all"
+                    style={{
+                      background: m.role === "admin"
+                        ? "rgba(148,163,184,0.1)"
+                        : "rgba(108,99,255,0.15)",
+                      color: m.role === "admin" ? "#94a3b8" : "#6c63ff",
+                      border: `1px solid ${m.role === "admin" ? "#2e3347" : "rgba(108,99,255,0.3)"}`,
+                      opacity: updatingRoleId === m.id ? 0.5 : 1,
+                    }}
+                    title={m.role === "admin" ? "メンバーに変更" : "管理者に昇格"}
+                  >
+                    {updatingRoleId === m.id ? "..." : (m.role === "admin" ? "→メンバー" : "→管理者")}
+                  </button>
+                )}
+
                 {m.role !== "admin" && (
                   <button
                     onClick={() => handleDelete(m)}
