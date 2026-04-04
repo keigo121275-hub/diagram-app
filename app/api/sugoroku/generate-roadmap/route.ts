@@ -71,7 +71,7 @@ ${inputText}`;
   try {
     message = await anthropic.messages.create({
       model: "claude-opus-4-5",
-      max_tokens: 4096,
+      max_tokens: 8192,
       messages: [{ role: "user", content: prompt }],
     });
   } catch (err) {
