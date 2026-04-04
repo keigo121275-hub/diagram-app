@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
+import type { Member } from "@/lib/supabase/types";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -17,7 +18,7 @@ export async function POST(request: NextRequest) {
     .from("members")
     .select("role")
     .eq("id", user.id)
-    .single();
+    .single() as { data: Pick<Member, "role"> | null; error: unknown };
   if (member?.role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

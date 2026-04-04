@@ -41,7 +41,7 @@ export default async function DashboardPage() {
     .from("roadmaps")
     .select("*, tasks(*)")
     .order("created_at", { ascending: true });
-  const roadmaps = (roadmapsResult.data ?? []) as RoadmapWithTasks[];
+  const roadmaps = (roadmapsResult.data ?? []) as unknown as RoadmapWithTasks[];
 
   return (
     <div className="min-h-screen" style={{ background: "#0f1117" }}>

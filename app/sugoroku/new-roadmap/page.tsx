@@ -100,7 +100,16 @@ export default function NewRoadmapPage() {
     }
 
     // 3. 子タスク（中・小）を parent_id 付きで INSERT
-    const childRows = tasks.flatMap((t, i) => {
+    type ChildRow = {
+      roadmap_id: string;
+      parent_id: string | null;
+      title: string;
+      level: "large" | "medium" | "small";
+      order: number;
+      status: "todo";
+      _parentTitle?: string;
+    };
+    const childRows: ChildRow[] = tasks.flatMap((t, i) => {
       const parentId = insertedLarge[i]?.id;
       if (!parentId) return [];
       return (t.children ?? []).flatMap((child, ci) => {

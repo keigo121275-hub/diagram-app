@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
+import type { Member } from "@/lib/supabase/types";
 
 export async function DELETE(request: NextRequest) {
   const supabase = await createServerClient();
@@ -11,7 +12,7 @@ export async function DELETE(request: NextRequest) {
     .from("members")
     .select("role")
     .eq("id", user.id)
-    .single();
+    .single() as { data: Pick<Member, "role"> | null; error: unknown };
   if (member?.role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

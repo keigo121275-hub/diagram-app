@@ -34,6 +34,7 @@ export interface Database {
           avatar_url?: string | null;
           created_at?: string;
         };
+        Relationships: [];
       };
       roadmaps: {
         Row: {
@@ -54,6 +55,7 @@ export interface Database {
           title?: string;
           created_at?: string;
         };
+        Relationships: [];
       };
       tasks: {
         Row: {
@@ -89,6 +91,7 @@ export interface Database {
           created_by?: string | null;
           created_at?: string;
         };
+        Relationships: [];
       };
       approval_requests: {
         Row: {
@@ -121,6 +124,7 @@ export interface Database {
           created_at?: string;
           reviewed_at?: string | null;
         };
+        Relationships: [];
       };
       comments: {
         Row: {
@@ -144,6 +148,7 @@ export interface Database {
           body?: string;
           created_at?: string;
         };
+        Relationships: [];
       };
       roadmap_generations: {
         Row: {
@@ -170,11 +175,18 @@ export interface Database {
           output_json?: Json | null;
           created_at?: string;
         };
+        Relationships: [];
       };
     };
-    Views: Record<string, never>;
-    Functions: Record<string, never>;
-    Enums: Record<string, never>;
+    Views: {
+      [_ in never]: never;
+    };
+    Functions: {
+      [_ in never]: never;
+    };
+    Enums: {
+      [_ in never]: never;
+    };
   };
 }
 

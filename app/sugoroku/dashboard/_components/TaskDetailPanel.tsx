@@ -12,6 +12,14 @@ interface TaskDetailPanelProps {
   onClose: () => void;
 }
 
+type CommentWithAuthor = {
+  id: string;
+  body: string;
+  created_at: string;
+  author_id: string | null;
+  author_name: string;
+};
+
 export default function TaskDetailPanel({ task, allTasks, onClose }: TaskDetailPanelProps) {
   const router = useRouter();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -29,6 +37,13 @@ export default function TaskDetailPanel({ task, allTasks, onClose }: TaskDetailP
   const [addingLevel, setAddingLevel] = useState<"medium" | "small">("medium");
   const [addingChild, setAddingChild] = useState(false);
 
+  // コメント
+  const [comments, setComments] = useState<CommentWithAuthor[]>([]);
+  const [commentText, setCommentText] = useState("");
+  const [postingComment, setPostingComment] = useState(false);
+  const [commentsLoading, setCommentsLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -36,6 +51,39 @@ export default function TaskDetailPanel({ task, allTasks, onClose }: TaskDetailP
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
+
+  useEffect(() => {
+    const fetchComments = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id ?? null);
+
+      const { data } = await supabase
+        .from("comments")
+        .select("*")
+        .eq("task_id", task.id)
+        .order("created_at", { ascending: true });
+
+      if (data && data.length > 0) {
+        const authorIds = [...new Set(data.map((c) => c.author_id).filter(Boolean))] as string[];
+        const { data: members } = await supabase
+          .from("members")
+          .select("id, name")
+          .in("id", authorIds);
+        const memberMap = new Map(members?.map((m) => [m.id, m.name]) ?? []);
+        setComments(
+          data.map((c) => ({
+            ...c,
+            author_name: c.author_id ? (memberMap.get(c.author_id) ?? "不明") : "不明",
+          }))
+        );
+      } else {
+        setComments([]);
+      }
+      setCommentsLoading(false);
+    };
+    fetchComments();
+  }, [task.id]);
 
   const largeColors = STATUS_COLORS[largeStatus];
 
@@ -48,7 +96,6 @@ export default function TaskDetailPanel({ task, allTasks, onClose }: TaskDetailP
     return null;
   };
 
-  // 大タスク: 進行中にする / 再申請する
   const updateLargeStatus = async (newStatus: Task["status"]) => {
     setUpdatingLarge(true);
     const supabase = createClient();
@@ -58,12 +105,10 @@ export default function TaskDetailPanel({ task, allTasks, onClose }: TaskDetailP
     router.refresh();
   };
 
-  // 大タスク: 完了申請する（approval_requests に INSERT）
   const submitApproval = async () => {
     setUpdatingLarge(true);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    // 既存の申請があれば削除してから再申請
     await supabase.from("approval_requests").delete().eq("task_id", task.id);
     await supabase.from("approval_requests").insert({
       task_id: task.id,
@@ -76,7 +121,6 @@ export default function TaskDetailPanel({ task, allTasks, onClose }: TaskDetailP
     router.refresh();
   };
 
-  // 子タスクのステータス変更
   const updateChildStatus = async (childId: string, newStatus: Task["status"]) => {
     setUpdatingChild(childId);
     const supabase = createClient();
@@ -88,7 +132,6 @@ export default function TaskDetailPanel({ task, allTasks, onClose }: TaskDetailP
     router.refresh();
   };
 
-  // 子タスクを追加
   const addChildTask = async () => {
     if (!addingTitle.trim()) return;
     setAddingChild(true);
@@ -112,6 +155,30 @@ export default function TaskDetailPanel({ task, allTasks, onClose }: TaskDetailP
     setShowAddForm(false);
     setAddingChild(false);
     router.refresh();
+  };
+
+  const postComment = async () => {
+    if (!commentText.trim() || postingComment) return;
+    setPostingComment(true);
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    const { data: newComment } = await supabase
+      .from("comments")
+      .insert({ task_id: task.id, author_id: user?.id, body: commentText.trim() })
+      .select()
+      .single();
+
+    if (newComment) {
+      const { data: members } = await supabase
+        .from("members")
+        .select("id, name")
+        .eq("id", user?.id ?? "");
+      const name = members?.[0]?.name ?? "不明";
+      setComments((prev) => [...prev, { ...newComment, author_name: name }]);
+    }
+    setCommentText("");
+    setPostingComment(false);
   };
 
   return (
@@ -199,7 +266,6 @@ export default function TaskDetailPanel({ task, allTasks, onClose }: TaskDetailP
                 </button>
               </div>
 
-              {/* 追加フォーム */}
               {showAddForm && (
                 <div
                   className="rounded-lg p-3 mb-3 space-y-2"
@@ -259,7 +325,6 @@ export default function TaskDetailPanel({ task, allTasks, onClose }: TaskDetailP
                 </div>
               )}
 
-              {/* 子タスクリスト */}
               {children.length === 0 && !showAddForm ? (
                 <p className="text-xs" style={{ color: "#4a5568" }}>
                   サブタスクがまだありません。「+ 追加」から作成できます。
@@ -414,15 +479,87 @@ export default function TaskDetailPanel({ task, allTasks, onClose }: TaskDetailP
           {/* コメント欄 */}
           <div>
             <p className="text-xs font-medium mb-3" style={{ color: "#94a3b8" }}>
-              コメント
+              コメント{comments.length > 0 && ` (${comments.length})`}
             </p>
+
+            {/* コメントリスト */}
+            <div className="space-y-2 mb-3">
+              {commentsLoading ? (
+                <p className="text-xs text-center py-4" style={{ color: "#4a5568" }}>
+                  読み込み中...
+                </p>
+              ) : comments.length === 0 ? (
+                <p className="text-xs py-3 text-center" style={{ color: "#4a5568" }}>
+                  まだコメントがありません
+                </p>
+              ) : (
+                comments.map((c) => (
+                  <div
+                    key={c.id}
+                    className="rounded-xl p-3"
+                    style={{ background: "#232636", border: "1px solid #2e3347" }}
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span
+                        className="text-xs font-medium"
+                        style={{
+                          color: c.author_id === currentUserId ? "#6c63ff" : "#94a3b8",
+                        }}
+                      >
+                        {c.author_id === currentUserId ? "あなた" : c.author_name}
+                      </span>
+                      <span className="text-xs" style={{ color: "#4a5568" }}>
+                        {new Date(c.created_at).toLocaleDateString("ja-JP", {
+                          month: "numeric",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    </div>
+                    <p className="text-xs leading-relaxed" style={{ color: "#e2e8f0" }}>
+                      {c.body}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* コメント投稿フォーム */}
             <div
-              className="rounded-xl p-4 text-center"
-              style={{ background: "#232636", border: "1px dashed #2e3347" }}
+              className="rounded-xl p-3"
+              style={{ background: "#232636", border: "1px solid #2e3347" }}
             >
-              <p className="text-xs" style={{ color: "#4a5568" }}>
-                コメント機能は近日公開予定
-              </p>
+              <textarea
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) postComment();
+                }}
+                placeholder="コメントを入力... (⌘+Enter で送信)"
+                rows={3}
+                className="w-full text-xs outline-none resize-none mb-2"
+                style={{
+                  background: "transparent",
+                  color: "#e2e8f0",
+                }}
+              />
+              <div className="flex justify-end">
+                <button
+                  onClick={postComment}
+                  disabled={!commentText.trim() || postingComment}
+                  className="px-4 py-1.5 rounded-lg text-xs font-medium transition-opacity"
+                  style={{
+                    background: commentText.trim()
+                      ? "linear-gradient(135deg, #6c63ff, #5a52e8)"
+                      : "#2e3347",
+                    color: commentText.trim() ? "#fff" : "#4a5568",
+                    opacity: postingComment ? 0.5 : 1,
+                  }}
+                >
+                  {postingComment ? "送信中..." : "送信"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
