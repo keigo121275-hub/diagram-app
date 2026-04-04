@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef, useMemo, useState } from "react";
 import {
   DndContext,
   PointerSensor,
@@ -27,16 +26,17 @@ interface TaskDetailPanelProps {
   task: Task;
   allTasks: Task[];
   onClose: () => void;
+  /** 大タスクのフィールド変更をボードに通知（grid の即時更新用）*/
+  onTaskUpdated?: (id: string, patch: Partial<Task>) => void;
 }
 
 type SubTaskStatus = "todo" | "in_progress" | "done" | "needs_revision";
 
-const SUB_STATUS_OPTIONS: { value: SubTaskStatus; label: string }[] = [
-  { value: "todo", label: "未着手" },
-  { value: "in_progress", label: "進行中" },
-  { value: "done", label: "完了" },
-  { value: "needs_revision", label: "要修正" },
-];
+const SUB_STATUS_KEYS: SubTaskStatus[] = ["todo", "in_progress", "done", "needs_revision"];
+const SUB_STATUS_OPTIONS = SUB_STATUS_KEYS.map((v) => ({
+  value: v,
+  label: STATUS_LABELS[v],
+}));
 
 // Sortable ラッパー: ドラッグハンドルを children に提供する render-prop コンポーネント
 function SortableRow({
@@ -72,9 +72,9 @@ function SortableRow({
   );
 }
 
-export default function TaskDetailPanel({ task, allTasks, onClose }: TaskDetailPanelProps) {
-  const router = useRouter();
+export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated }: TaskDetailPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const supabase = useMemo(() => createClient(), []);
 
   // 中タスク（大タスクの直接子）
   const [mediumTasks, setMediumTasks] = useState<Task[]>(
@@ -152,7 +152,6 @@ export default function TaskDetailPanel({ task, allTasks, onClose }: TaskDetailP
       return;
     }
     const targetStatus = largeStatus === "needs_revision" ? "rejected" : "approved";
-    const supabase = createClient();
     supabase
       .from("approval_requests")
       .select("comment, reviewed_at")
@@ -197,7 +196,6 @@ export default function TaskDetailPanel({ task, allTasks, onClose }: TaskDetailP
       )
       .map((t) => t.id);
     if (allChildIds.length === 0) return;
-    const supabase = createClient();
     supabase
       .from("comments")
       .select("task_id")
@@ -213,35 +211,30 @@ export default function TaskDetailPanel({ task, allTasks, onClose }: TaskDetailP
 
   const largeColors = STATUS_COLORS[largeStatus];
 
-  // ---- タイトル編集 ----
   const saveLargeTitle = async () => {
     const trimmed = largeTitleValue.trim();
     if (!trimmed || trimmed === largeTitle) { setEditingLargeTitle(false); return; }
-    const supabase = createClient();
     await supabase.from("tasks").update({ title: trimmed }).eq("id", task.id);
     setLargeTitle(trimmed);
     setEditingLargeTitle(false);
-    router.refresh();
+    onTaskUpdated?.(task.id, { title: trimmed });
   };
 
   const saveMediumTitle = async (mediumId: string) => {
     const trimmed = (mediumTitleValues[mediumId] ?? "").trim();
     const original = mediumTasks.find((t) => t.id === mediumId)?.title ?? "";
     if (!trimmed || trimmed === original) { setEditingMediumId(null); return; }
-    const supabase = createClient();
     await supabase.from("tasks").update({ title: trimmed }).eq("id", mediumId);
     setMediumTasks((prev) =>
       prev.map((t) => (t.id === mediumId ? { ...t, title: trimmed } : t))
     );
     setEditingMediumId(null);
-    router.refresh();
   };
 
   const saveSmallTitle = async (mediumId: string, smallId: string) => {
     const trimmed = (smallTitleValues[smallId] ?? "").trim();
     const original = (smallTasksMap[mediumId] ?? []).find((t) => t.id === smallId)?.title ?? "";
     if (!trimmed || trimmed === original) { setEditingSmallId(null); return; }
-    const supabase = createClient();
     await supabase.from("tasks").update({ title: trimmed }).eq("id", smallId);
     setSmallTasksMap((prev) => ({
       ...prev,
@@ -250,13 +243,10 @@ export default function TaskDetailPanel({ task, allTasks, onClose }: TaskDetailP
       ),
     }));
     setEditingSmallId(null);
-    router.refresh();
   };
 
-  // ---- タスク説明文 ----
   const saveDescription = async () => {
     setSavingDescription(true);
-    const supabase = createClient();
     await supabase
       .from("tasks")
       .update({ description: taskDescription || null })
@@ -264,19 +254,15 @@ export default function TaskDetailPanel({ task, allTasks, onClose }: TaskDetailP
     setSavingDescription(false);
   };
 
-  // ---- 期限日 ----
   const updateDueDate = async (value: string) => {
     setSavingDate(true);
-    const supabase = createClient();
     await supabase.from("tasks").update({ due_date: value || null }).eq("id", task.id);
     setSavingDate(false);
-    router.refresh();
+    onTaskUpdated?.(task.id, { due_date: value || null });
   };
 
-  // ---- 成果物 ----
   const saveDeliverable = async () => {
     setSavingDeliverable(true);
-    const supabase = createClient();
     await supabase
       .from("tasks")
       .update({ deliverable_note: deliverableNote || null })
@@ -284,19 +270,16 @@ export default function TaskDetailPanel({ task, allTasks, onClose }: TaskDetailP
     setSavingDeliverable(false);
   };
 
-  // ---- 大タスクステータス ----
   const updateLargeStatus = async (newStatus: Task["status"]) => {
     setUpdatingLarge(true);
-    const supabase = createClient();
     await supabase.from("tasks").update({ status: newStatus }).eq("id", task.id);
     setLargeStatus(newStatus);
     setUpdatingLarge(false);
-    router.refresh();
+    onTaskUpdated?.(task.id, { status: newStatus });
   };
 
   const submitApproval = async () => {
     setUpdatingLarge(true);
-    const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     await supabase.from("approval_requests").delete().eq("task_id", task.id);
     await supabase.from("approval_requests").insert({
@@ -307,10 +290,9 @@ export default function TaskDetailPanel({ task, allTasks, onClose }: TaskDetailP
     await supabase.from("tasks").update({ status: "pending_approval" }).eq("id", task.id);
     setLargeStatus("pending_approval");
     setUpdatingLarge(false);
-    router.refresh();
+    onTaskUpdated?.(task.id, { status: "pending_approval" });
   };
 
-  // ---- 中・小タスクステータス変更（プルダウン） ----
   const updateTaskStatus = async (
     taskId: string,
     newStatus: SubTaskStatus,
@@ -318,7 +300,6 @@ export default function TaskDetailPanel({ task, allTasks, onClose }: TaskDetailP
     mediumParentId?: string
   ) => {
     setUpdatingTask(taskId);
-    const supabase = createClient();
     await supabase.from("tasks").update({ status: newStatus }).eq("id", taskId);
     if (isMedium) {
       setMediumTasks((prev) =>
@@ -333,14 +314,11 @@ export default function TaskDetailPanel({ task, allTasks, onClose }: TaskDetailP
       }));
     }
     setUpdatingTask(null);
-    router.refresh();
   };
 
-  // ---- 追加 ----
   const addMediumTask = async () => {
     if (!addingMediumTitle.trim()) return;
     setAddingMedium(true);
-    const supabase = createClient();
     const { data: newTask } = await supabase
       .from("tasks")
       .insert({
@@ -362,14 +340,12 @@ export default function TaskDetailPanel({ task, allTasks, onClose }: TaskDetailP
     setAddingMediumTitle("");
     setShowAddMediumForm(false);
     setAddingMedium(false);
-    router.refresh();
   };
 
   const addSmallTask = async (mediumId: string) => {
     const title = addingSmallTitle[mediumId]?.trim();
     if (!title) return;
     setAddingSmall(mediumId);
-    const supabase = createClient();
     const currentSmalls = smallTasksMap[mediumId] ?? [];
     const { data: newTask } = await supabase
       .from("tasks")
@@ -392,13 +368,10 @@ export default function TaskDetailPanel({ task, allTasks, onClose }: TaskDetailP
     setAddingSmallTitle((prev) => ({ ...prev, [mediumId]: "" }));
     setShowAddSmallMap((prev) => ({ ...prev, [mediumId]: false }));
     setAddingSmall(null);
-    router.refresh();
   };
 
-  // ---- 削除 ----
   const deleteMediumTask = async (mediumId: string) => {
     if (!confirm("この中タスクと、その小タスクをすべて削除しますか？")) return;
-    const supabase = createClient();
     const smallIds = (smallTasksMap[mediumId] ?? []).map((t) => t.id);
     if (smallIds.length > 0) {
       await supabase.from("tasks").delete().in("id", smallIds);
@@ -410,21 +383,17 @@ export default function TaskDetailPanel({ task, allTasks, onClose }: TaskDetailP
       delete next[mediumId];
       return next;
     });
-    router.refresh();
   };
 
   const deleteSmallTask = async (mediumId: string, smallId: string) => {
     if (!confirm("この小タスクを削除しますか？")) return;
-    const supabase = createClient();
     await supabase.from("tasks").delete().eq("id", smallId);
     setSmallTasksMap((prev) => ({
       ...prev,
       [mediumId]: (prev[mediumId] ?? []).filter((t) => t.id !== smallId),
     }));
-    router.refresh();
   };
 
-  // ---- ドラッグ&ドロップ ----
   const handleMediumDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
@@ -436,7 +405,6 @@ export default function TaskDetailPanel({ task, allTasks, onClose }: TaskDetailP
       order: i + 1,
     }));
     setMediumTasks(reordered);
-    const supabase = createClient();
     await Promise.all(
       reordered.map((t) => supabase.from("tasks").update({ order: t.order }).eq("id", t.id))
     );
@@ -454,7 +422,6 @@ export default function TaskDetailPanel({ task, allTasks, onClose }: TaskDetailP
       order: i + 1,
     }));
     setSmallTasksMap((prev) => ({ ...prev, [mediumId]: reordered }));
-    const supabase = createClient();
     await Promise.all(
       reordered.map((t) => supabase.from("tasks").update({ order: t.order }).eq("id", t.id))
     );

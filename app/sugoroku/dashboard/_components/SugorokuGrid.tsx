@@ -28,6 +28,7 @@ interface SugorokuGridProps {
   isAdmin: boolean;
   onDeleteTask: (taskId: string) => void;
   onReorder: (newTasks: Task[]) => void;
+  onTaskUpdated: (id: string, patch: Partial<Task>) => void;
 }
 
 const COLS = 5;
@@ -39,6 +40,7 @@ export function SugorokuGrid({
   isAdmin,
   onDeleteTask,
   onReorder,
+  onTaskUpdated,
 }: SugorokuGridProps) {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
@@ -158,6 +160,7 @@ export function SugorokuGrid({
           task={selectedTask}
           allTasks={allTasks}
           onClose={() => setSelectedTask(null)}
+          onTaskUpdated={onTaskUpdated}
         />
       )}
 

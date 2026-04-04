@@ -4,21 +4,13 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Member, Task } from "@/lib/supabase/types";
+import type { RoadmapWithTasks } from "@/app/sugoroku/_lib/types";
 import { BoardHeader } from "./BoardHeader";
 import { DeleteConfirmDialog } from "./DeleteConfirmDialog";
 import { MemberTabs } from "./MemberTabs";
 import { ProgressBar } from "./ProgressBar";
 import { SugorokuGrid } from "./SugorokuGrid";
 import { DailyReportModal } from "./DailyReportModal";
-
-interface RoadmapWithTasks {
-  id: string;
-  member_id: string;
-  title: string;
-  description: string | null;
-  created_at: string;
-  tasks: Task[];
-}
 
 interface SugorokuBoardProps {
   currentMember: Member | null;
@@ -127,6 +119,15 @@ export default function SugorokuBoard({
     );
   };
 
+  /** TaskDetailPanel から大タスクの変更通知を受け取り、ローカル state を即時更新 */
+  const handleTaskUpdated = (id: string, patch: Partial<Task>) => {
+    setLocalTasksMap((prev) => {
+      const current = prev[activeMemberId] ?? roadmap?.tasks ?? [];
+      const updated = current.map((t) => (t.id === id ? { ...t, ...patch } : t));
+      return { ...prev, [activeMemberId]: updated };
+    });
+  };
+
   if (roadmaps.length === 0 && !isAdmin) {
     return (
       <div className="text-center py-24">
@@ -208,6 +209,7 @@ export default function SugorokuBoard({
               isAdmin={isAdmin}
               onDeleteTask={handleDeleteTask}
               onReorder={handleReorder}
+              onTaskUpdated={handleTaskUpdated}
             />
           ) : (
             <div className="text-center py-12">

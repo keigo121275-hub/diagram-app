@@ -1,17 +1,9 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import type { Member, Task } from "@/lib/supabase/types";
+import type { Member } from "@/lib/supabase/types";
+import type { RoadmapWithTasks } from "@/app/sugoroku/_lib/types";
 import SugorokuBoard from "./_components/SugorokuBoard";
 import Navbar from "./_components/Navbar";
-
-type RoadmapWithTasks = {
-  id: string;
-  member_id: string;
-  title: string;
-  description: string | null;
-  created_at: string;
-  tasks: Task[];
-};
 
 export default async function DashboardPage() {
   const supabase = await createClient();
