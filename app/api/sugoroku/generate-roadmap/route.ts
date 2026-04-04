@@ -71,7 +71,7 @@ ${inputText}`;
   try {
     message = await anthropic.messages.create({
       model: "claude-opus-4-5",
-      max_tokens: 2048,
+      max_tokens: 4096,
       messages: [{ role: "user", content: prompt }],
     });
   } catch (err) {
@@ -85,9 +85,23 @@ ${inputText}`;
   const rawText =
     message.content[0].type === "text" ? message.content[0].text : "";
 
-  // JSON 部分を抽出
-  const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
+  // JSON ブロックを安全に抽出（括弧のネスト深度を追跡）
+  let jsonStr: string | null = null;
+  const startIdx = rawText.indexOf("{");
+  if (startIdx !== -1) {
+    let depth = 0;
+    let endIdx = -1;
+    for (let i = startIdx; i < rawText.length; i++) {
+      if (rawText[i] === "{") depth++;
+      else if (rawText[i] === "}") {
+        depth--;
+        if (depth === 0) { endIdx = i; break; }
+      }
+    }
+    if (endIdx !== -1) jsonStr = rawText.slice(startIdx, endIdx + 1);
+  }
+
+  if (!jsonStr) {
     return NextResponse.json(
       { error: "Claude からの応答を解析できませんでした" },
       { status: 500 }
@@ -96,7 +110,7 @@ ${inputText}`;
 
   let result;
   try {
-    result = JSON.parse(jsonMatch[0]);
+    result = JSON.parse(jsonStr);
   } catch {
     return NextResponse.json(
       { error: "JSON の解析に失敗しました" },
