@@ -67,11 +67,20 @@ export async function POST(request: NextRequest) {
 【入力テキスト】
 ${inputText}`;
 
-  const message = await anthropic.messages.create({
-    model: "claude-opus-4-5",
-    max_tokens: 2048,
-    messages: [{ role: "user", content: prompt }],
-  });
+  let message;
+  try {
+    message = await anthropic.messages.create({
+      model: "claude-opus-4-5",
+      max_tokens: 2048,
+      messages: [{ role: "user", content: prompt }],
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return NextResponse.json(
+      { error: "Claude API エラー: " + msg },
+      { status: 500 }
+    );
+  }
 
   const rawText =
     message.content[0].type === "text" ? message.content[0].text : "";
@@ -85,7 +94,15 @@ ${inputText}`;
     );
   }
 
-  const result = JSON.parse(jsonMatch[0]);
+  let result;
+  try {
+    result = JSON.parse(jsonMatch[0]);
+  } catch {
+    return NextResponse.json(
+      { error: "JSON の解析に失敗しました" },
+      { status: 500 }
+    );
+  }
 
   return NextResponse.json(result);
 }

@@ -51,8 +51,19 @@ export default function NewRoadmapPage() {
       body: JSON.stringify({ inputText, duration }),
     });
     if (!res.ok) {
-      const err = await res.json();
-      setError(err.error ?? "生成に失敗しました");
+      let errMsg = "生成に失敗しました";
+      try {
+        const text = await res.text();
+        if (text) {
+          const err = JSON.parse(text);
+          errMsg = err.error ?? errMsg;
+        } else {
+          errMsg = `サーバーエラー (${res.status})`;
+        }
+      } catch {
+        errMsg = `サーバーエラー (${res.status})`;
+      }
+      setError(errMsg);
       setStep(1);
       return;
     }
