@@ -38,16 +38,23 @@ export function BoardHeader({
 
   return (
     <div className="mb-6">
-      {/* タイトル行 */}
-      <div className="flex items-start justify-between gap-4 mb-3">
+      {/* ボタン行 + 目標 */}
+      <div className="flex items-start justify-between gap-4 mb-4">
+        {/* 目標テキスト（主役） */}
         <div className="flex-1 min-w-0">
-          <h2 className="text-2xl font-bold tracking-tight" style={{ color: "#e2e8f0" }}>
-            {title}
-          </h2>
-          {isAdmin && (
-            <p className="text-xs mt-0.5" style={{ color: "#94a3b8" }}>
-              管理者ビュー — メンバーのロードマップを確認できます
-            </p>
+          {desc ? (
+            <h2
+              className="text-xl font-bold leading-snug"
+              style={{ color: "#e2e8f0" }}
+            >
+              {desc}
+            </h2>
+          ) : (
+            hasRoadmap && isAdmin && (
+              <p className="text-sm" style={{ color: "#4a5568" }}>
+                目標を設定してください（下の欄に入力すると保存されます）
+              </p>
+            )
           )}
         </div>
 
@@ -81,38 +88,42 @@ export function BoardHeader({
         </div>
       </div>
 
-      {/* 目標・概要 */}
-      {hasRoadmap && (
+      {/* 目標編集欄（管理者のみ・ロードマップがある場合） */}
+      {hasRoadmap && isAdmin && (
         <div
           className="rounded-xl p-4"
           style={{ background: "#1a1d27", border: "1px solid #2e3347" }}
         >
           <p className="text-xs font-medium mb-2" style={{ color: "#6c63ff" }}>
+            🎯 目標を編集
+          </p>
+          <textarea
+            value={desc}
+            onChange={(e) => setDesc(e.target.value)}
+            onBlur={saveDescription}
+            placeholder="このロードマップのゴールや育成方針を入力してください..."
+            rows={2}
+            className="w-full text-sm outline-none resize-none"
+            style={{ background: "transparent", color: "#e2e8f0" }}
+          />
+          {saving && (
+            <span className="text-xs" style={{ color: "#4a5568" }}>保存中...</span>
+          )}
+        </div>
+      )}
+
+      {/* メンバーには目標のみ表示（未設定時は非表示） */}
+      {hasRoadmap && !isAdmin && desc && (
+        <div
+          className="rounded-xl p-4"
+          style={{ background: "#1a1d27", border: "1px solid #2e3347" }}
+        >
+          <p className="text-xs font-medium mb-1" style={{ color: "#6c63ff" }}>
             🎯 ロードマップの目標
           </p>
-          {isAdmin ? (
-            <>
-              <textarea
-                value={desc}
-                onChange={(e) => setDesc(e.target.value)}
-                onBlur={saveDescription}
-                placeholder="このロードマップのゴールや育成方針を入力してください..."
-                rows={2}
-                className="w-full text-sm outline-none resize-none"
-                style={{
-                  background: "transparent",
-                  color: "#e2e8f0",
-                }}
-              />
-              {saving && (
-                <span className="text-xs" style={{ color: "#4a5568" }}>保存中...</span>
-              )}
-            </>
-          ) : (
-            <p className="text-sm leading-relaxed" style={{ color: desc ? "#e2e8f0" : "#4a5568" }}>
-              {desc || "（未設定）"}
-            </p>
-          )}
+          <p className="text-sm leading-relaxed" style={{ color: "#e2e8f0" }}>
+            {desc}
+          </p>
         </div>
       )}
     </div>

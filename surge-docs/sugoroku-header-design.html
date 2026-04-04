@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>すごろくロードマップ ヘッダーデザイン案 v2</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0f1117;
+      color: #e2e8f0;
+      font-family: -apple-system, 'Hiragino Sans', 'Yu Gothic', sans-serif;
+      padding: 40px 20px;
+    }
+    .page-title { text-align: center; margin-bottom: 60px; }
+    .page-title h1 { font-size: 18px; color: #94a3b8; font-weight: 500; letter-spacing: 0.05em; }
+    .page-title p { font-size: 13px; color: #4a5568; margin-top: 8px; }
+
+    .section { max-width: 860px; margin: 0 auto 80px; }
+    .section-label {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+      text-transform: uppercase; padding: 4px 12px; border-radius: 20px; margin-bottom: 20px;
+    }
+    .label-orig { background: rgba(249,168,212,0.15); color: #f9a8d4; border: 1px solid rgba(249,168,212,0.3); }
+    .label-belle { background: rgba(240,98,146,0.15); color: #f06292; border: 1px solid rgba(240,98,146,0.35); }
+
+    /* ── 共通ナビバー ── */
+    .mock-navbar {
+      background: rgba(26,29,39,0.95); border-bottom: 1px solid #2e3347;
+      padding: 12px 24px; display: flex; align-items: center;
+      justify-content: space-between; border-radius: 12px 12px 0 0;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 700; color: #e2e8f0; }
+    .logo-icon {
+      width: 28px; height: 28px; border-radius: 8px;
+      background: linear-gradient(135deg, #6c63ff, #4ade80);
+      display: flex; align-items: center; justify-content: center; font-size: 14px;
+    }
+    .logo-icon-belle {
+      width: 28px; height: 28px; border-radius: 8px;
+      background: linear-gradient(135deg, #f06292, #c2185b);
+      display: flex; align-items: center; justify-content: center; font-size: 14px;
+    }
+    .avatar {
+      width: 28px; height: 28px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 700; color: #fff;
+    }
+    .avatar-orig { background: linear-gradient(135deg, #6c63ff, #4ade80); }
+    .avatar-belle { background: linear-gradient(135deg, #f06292, #c2185b); }
+
+    /* ─── 案A オリジナル ─── */
+    .design-a { border-radius: 12px; overflow: hidden; border: 1px solid #2e3347; }
+    .design-a .hero {
+      background: linear-gradient(135deg, #1a0a2e 0%, #2d1b4e 50%, #1a1030 100%);
+      padding: 36px 40px 28px; position: relative; overflow: hidden;
+    }
+    .design-a .hero::before {
+      content: ''; position: absolute; top: -60px; right: -60px;
+      width: 240px; height: 240px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(249,168,212,0.15) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .design-a .hero::after {
+      content: ''; position: absolute; bottom: -40px; left: -40px;
+      width: 180px; height: 180px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(196,181,253,0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .design-a .tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 11px; color: #f9a8d4;
+      background: rgba(249,168,212,0.1); border: 1px solid rgba(249,168,212,0.25);
+      border-radius: 20px; padding: 3px 10px; margin-bottom: 14px;
+    }
+    .design-a .roadmap-title {
+      font-size: 28px; font-weight: 800; line-height: 1.3;
+      background: linear-gradient(135deg, #f9a8d4, #c4b5fd, #a5b4fc);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; margin-bottom: 6px; position: relative; z-index: 1;
+    }
+    .design-a .period { font-size: 12px; color: #6b7280; position: relative; z-index: 1; }
+    .design-a .goal-section {
+      background: #13101f; padding: 24px 40px;
+      border-top: 1px solid rgba(249,168,212,0.15);
+    }
+    .design-a .goal-label {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.15em;
+      color: #f9a8d4; text-transform: uppercase; margin-bottom: 12px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .design-a .goal-label::after {
+      content: ''; flex: 1; height: 1px;
+      background: linear-gradient(to right, rgba(249,168,212,0.3), transparent);
+    }
+    .design-a .goal-input {
+      width: 100%; background: transparent; border: none; outline: none;
+      font-size: 15px; line-height: 1.8; color: #e2e8f0; resize: none;
+      font-family: inherit; border-bottom: 1px dashed rgba(249,168,212,0.2); padding-bottom: 4px;
+    }
+    .design-a .goal-input::placeholder { color: #4a5568; }
+
+    /* ─── 案A ベルラス版 ─── */
+    .design-belle { border-radius: 12px; overflow: hidden; border: 1px solid #3a1a28; }
+    .design-belle .hero {
+      background: linear-gradient(135deg, #1f0a14 0%, #2e1120 50%, #1f0a18 100%);
+      padding: 36px 40px 28px; position: relative; overflow: hidden;
+    }
+    .design-belle .hero::before {
+      content: ''; position: absolute; top: -60px; right: -60px;
+      width: 260px; height: 260px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(240,98,146,0.18) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .design-belle .hero::after {
+      content: ''; position: absolute; bottom: -40px; left: -20px;
+      width: 200px; height: 200px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,182,193,0.1) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .design-belle .tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 11px; color: #f9a8d4;
+      background: rgba(240,98,146,0.12); border: 1px solid rgba(240,98,146,0.3);
+      border-radius: 20px; padding: 3px 10px; margin-bottom: 14px;
+    }
+    .design-belle .roadmap-title {
+      font-size: 28px; font-weight: 800; line-height: 1.3;
+      background: linear-gradient(135deg, #fda4af, #f472b6, #ec4899);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; margin-bottom: 6px; position: relative; z-index: 1;
+    }
+    .design-belle .period { font-size: 12px; color: #6b7280; position: relative; z-index: 1; }
+    .design-belle .goal-section {
+      background: #180a10; padding: 24px 40px;
+      border-top: 1px solid rgba(240,98,146,0.2);
+    }
+    .design-belle .goal-label {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.15em;
+      color: #f472b6; text-transform: uppercase; margin-bottom: 12px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .design-belle .goal-label::after {
+      content: ''; flex: 1; height: 1px;
+      background: linear-gradient(to right, rgba(244,114,182,0.35), transparent);
+    }
+    .design-belle .goal-input {
+      width: 100%; background: transparent; border: none; outline: none;
+      font-size: 15px; line-height: 1.8; color: #e2e8f0; resize: none;
+      font-family: inherit; border-bottom: 1px dashed rgba(244,114,182,0.25); padding-bottom: 4px;
+    }
+    .design-belle .goal-input::placeholder { color: #4a3040; }
+
+    /* ─── 進捗バー・ボタン ─── */
+    .progress-wrap {
+      margin-top: 16px; background: #1a1d27; border-radius: 12px;
+      padding: 14px 20px; border: 1px solid #2e3347;
+    }
+    .progress-wrap-belle {
+      margin-top: 16px; background: #1a0e14; border-radius: 12px;
+      padding: 14px 20px; border: 1px solid #3a1a28;
+    }
+    .progress-meta { display: flex; justify-content: space-between; font-size: 11px; color: #64748b; margin-bottom: 8px; }
+    .progress-track { background: #2e3347; border-radius: 99px; height: 6px; }
+    .progress-track-belle { background: #3a1a28; border-radius: 99px; height: 6px; }
+    .progress-fill { height: 6px; border-radius: 99px; width: 30%; }
+    .fill-orig { background: linear-gradient(135deg, #f9a8d4, #c4b5fd); }
+    .fill-belle { background: linear-gradient(135deg, #f472b6, #ec4899, #c2185b); }
+
+    .btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+    .btn { font-size: 12px; padding: 8px 16px; border-radius: 10px; border: none; cursor: default; font-weight: 600; }
+    .btn-del { background: rgba(248,113,113,0.1); color: #f87171; border: 1px solid rgba(248,113,113,0.25); }
+    .btn-new-orig { background: linear-gradient(135deg, #6c63ff, #5b52ee); color: #fff; }
+    .btn-new-belle { background: linear-gradient(135deg, #f06292, #c2185b); color: #fff; }
+
+    .note { font-size: 12px; color: #4a5568; text-align: center; margin-top: 14px; line-height: 1.7; }
+    .note strong { color: #94a3b8; }
+
+    .divider-text {
+      text-align: center; font-size: 11px; color: #4a5568;
+      letter-spacing: 0.1em; margin: 60px 0 20px;
+      display: flex; align-items: center; gap: 16px; max-width: 860px; margin-left: auto; margin-right: auto;
+    }
+    .divider-text::before, .divider-text::after {
+      content: ''; flex: 1; height: 1px; background: #2e3347;
+    }
+  </style>
+</head>
+<body>
+
+<div class="page-title">
+  <h1>案 A　— オリジナル vs ベルラスカラー</h1>
+  <p>同じレイアウトでカラーだけ変えて並べました</p>
+</div>
+
+<!-- ─── 案A オリジナル ─── -->
+<div class="section">
+  <div class="section-label label-orig">✦ 案 A　オリジナル　— ラベンダー×ピンク</div>
+  <div class="design-a">
+    <div class="mock-navbar">
+      <div class="logo"><div class="logo-icon">🎲</div>すごろくロードマップ</div>
+      <div class="avatar avatar-orig">KO</div>
+    </div>
+    <div class="hero">
+      <div class="tag">✨ ロードマップ</div>
+      <div class="roadmap-title">広報担当者育成ロードマップ</div>
+      <div class="period">1ヶ月プログラム　／　管理者ビュー</div>
+    </div>
+    <div class="goal-section">
+      <div class="goal-label">MY GOAL</div>
+      <textarea class="goal-input" rows="2" placeholder="このロードマップで何を達成したいか、自分の言葉で書いてみよう..."></textarea>
+    </div>
+  </div>
+  <div class="progress-wrap">
+    <div class="progress-meta"><span>進捗</span><span>3 / 10 マス完了</span></div>
+    <div class="progress-track"><div class="progress-fill fill-orig"></div></div>
+  </div>
+  <div class="btns">
+    <button class="btn btn-del">🗑 全タスク削除</button>
+    <button class="btn btn-new-orig">✨ 新規生成</button>
+  </div>
+  <p class="note"><strong>カラー：</strong>ピンク × ラベンダー × ブルーパープル / 背景は深いネイビーパープル</p>
+</div>
+
+<div class="divider-text">カラーだけ変えてみると？</div>
+
+<!-- ─── 案A ベルラス版 ─── -->
+<div class="section">
+  <div class="section-label label-belle">✦ 案 A　ベルラスカラー　— ローズ×ピンク</div>
+  <div class="design-belle">
+    <div class="mock-navbar" style="background:rgba(20,10,16,0.95); border-color:#3a1a28;">
+      <div class="logo"><div class="logo-icon-belle">🎲</div>すごろくロードマップ</div>
+      <div class="avatar avatar-belle">KO</div>
+    </div>
+    <div class="hero">
+      <div class="tag">🌸 ロードマップ</div>
+      <div class="roadmap-title">広報担当者育成ロードマップ</div>
+      <div class="period">1ヶ月プログラム　／　管理者ビュー</div>
+    </div>
+    <div class="goal-section">
+      <div class="goal-label">MY GOAL</div>
+      <textarea class="goal-input" rows="2" placeholder="このロードマップで何を達成したいか、自分の言葉で書いてみよう..."></textarea>
+    </div>
+  </div>
+  <div class="progress-wrap-belle">
+    <div class="progress-meta"><span>進捗</span><span>3 / 10 マス完了</span></div>
+    <div class="progress-track-belle"><div class="progress-fill fill-belle"></div></div>
+  </div>
+  <div class="btns">
+    <button class="btn btn-del">🗑 全タスク削除</button>
+    <button class="btn btn-new-belle">✨ 新規生成</button>
+  </div>
+  <p class="note"><strong>カラー：</strong>ローズ × ピンク × ディープローズ / 背景は深いワインレッドブラック<br>ボタンもピンク系に統一</p>
+</div>
+
+</body>
+</html>

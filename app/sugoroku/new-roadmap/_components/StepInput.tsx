@@ -11,10 +11,12 @@ interface StepInputProps {
   members: Member[];
   selectedMemberId: string;
   duration: string;
+  goal: string;
   inputText: string;
   error: string | null;
   onMemberChange: (id: string) => void;
   onDurationChange: (d: string) => void;
+  onGoalChange: (g: string) => void;
   onTextChange: (t: string) => void;
   onGenerate: () => void;
 }
@@ -23,14 +25,16 @@ export function StepInput({
   members,
   selectedMemberId,
   duration,
+  goal,
   inputText,
   error,
   onMemberChange,
   onDurationChange,
+  onGoalChange,
   onTextChange,
   onGenerate,
 }: StepInputProps) {
-  const canGenerate = inputText.length >= 50 && !!selectedMemberId;
+  const canGenerate = inputText.length >= 50 && !!selectedMemberId && goal.trim().length > 0;
 
   return (
     <div className="min-h-screen" style={{ background: "#0f1117" }}>
@@ -115,7 +119,30 @@ export function StepInput({
               className="block text-sm font-medium mb-2"
               style={{ color: "#94a3b8" }}
             >
-              育成資料・引継ぎ内容を貼り付け
+              このロードマップで達成したいこと
+              <span className="ml-1 text-xs" style={{ color: "#f87171" }}>*必須</span>
+            </label>
+            <textarea
+              value={goal}
+              onChange={(e) => onGoalChange(e.target.value)}
+              rows={2}
+              className="w-full px-4 py-3 rounded-xl text-sm outline-none resize-none"
+              style={{
+                background: "#1a1d27",
+                border: `1px solid ${goal.trim() ? "#6c63ff" : "#2e3347"}`,
+                color: "#e2e8f0",
+                lineHeight: "1.6",
+              }}
+              placeholder="例）3ヶ月以内に一人で架電〜クロージングまで完結できる営業担当者に育成する"
+            />
+          </div>
+
+          <div className="mb-5">
+            <label
+              className="block text-sm font-medium mb-2"
+              style={{ color: "#94a3b8" }}
+            >
+              ロードマップを作成
             </label>
             <textarea
               value={inputText}

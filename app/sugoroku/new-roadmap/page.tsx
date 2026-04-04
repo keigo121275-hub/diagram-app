@@ -28,6 +28,7 @@ export default function NewRoadmapPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState("");
   const [duration, setDuration] = useState("3ヶ月");
+  const [goal, setGoal] = useState("");
   const [inputText, setInputText] = useState("");
   const [result, setResult] = useState<GenerateResult | null>(null);
   const [tasks, setTasks] = useState<GeneratedTask[]>([]);
@@ -82,7 +83,7 @@ export default function NewRoadmapPage() {
     // 1. ロードマップを作成
     const { data: roadmap, error: rmErr } = await supabase
       .from("roadmaps")
-      .insert({ member_id: selectedMemberId, title: result.roadmap_title })
+      .insert({ member_id: selectedMemberId, title: result.roadmap_title, description: goal || null })
       .select()
       .single();
     if (rmErr || !roadmap) {
@@ -193,6 +194,7 @@ export default function NewRoadmapPage() {
 
   const handleReset = () => {
     setStep(1);
+    setGoal("");
     setInputText("");
     setResult(null);
     setTasks([]);
@@ -207,10 +209,12 @@ export default function NewRoadmapPage() {
         members={members}
         selectedMemberId={selectedMemberId}
         duration={duration}
+        goal={goal}
         inputText={inputText}
         error={error}
         onMemberChange={setSelectedMemberId}
         onDurationChange={setDuration}
+        onGoalChange={setGoal}
         onTextChange={setInputText}
         onGenerate={handleGenerate}
       />
