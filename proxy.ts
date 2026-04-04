@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { auth } from "@/auth";
+import { createServerClient } from "@supabase/ssr";
 
 /**
  * ALLOWED_EMAILS が設定されているとき、環境変数に加えて常に通すメール。
@@ -41,11 +42,66 @@ function getAllowedEmailsNormalized(): string[] {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // ログインページ・未承認ページはスキップ（無限リダイレクト防止）
-  if (
-    pathname.startsWith("/youtube/login") ||
-    pathname.startsWith("/youtube/unauthorized")
-  ) {
+  // ─── すごろくロードマップ ───
+  if (pathname.startsWith("/sugoroku")) {
+    if (pathname === "/sugoroku/login") {
+      return NextResponse.next();
+    }
+
+    let supabaseResponse = NextResponse.next({ request });
+
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value }) =>
+              request.cookies.set(name, value)
+            );
+            supabaseResponse = NextResponse.next({ request });
+            cookiesToSet.forEach(({ name, value, options }) =>
+              supabaseResponse.cookies.set(name, value, options)
+            );
+          },
+        },
+      }
+    );
+
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      const loginUrl = request.nextUrl.clone();
+      loginUrl.pathname = "/sugoroku/login";
+      return NextResponse.redirect(loginUrl);
+    }
+
+    // admin 専用ルートのガード
+    if (
+      pathname.startsWith("/sugoroku/admin") ||
+      pathname.startsWith("/sugoroku/new-roadmap")
+    ) {
+      const { data: member } = await supabase
+        .from("members")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      if (member?.role !== "admin") {
+        const dashboardUrl = request.nextUrl.clone();
+        dashboardUrl.pathname = "/sugoroku/dashboard";
+        return NextResponse.redirect(dashboardUrl);
+      }
+    }
+
+    return supabaseResponse;
+  }
+
+  // ─── YouTube アナリティクス ───
+  if (pathname.startsWith("/youtube/login") || pathname.startsWith("/youtube/unauthorized")) {
     return NextResponse.next();
   }
 
@@ -56,12 +112,10 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // /youtube/connect はログイン済みなら誰でもアクセス可（チャンネルオーナー用）
   if (pathname.startsWith("/youtube/connect")) {
     return NextResponse.next();
   }
 
-  // 分析画面はホワイトリストのみ（メール未設定のセッションはブロック＝想定外）
   const allowedEmails = getAllowedEmailsNormalized();
   if (allowedEmails.length > 0) {
     const raw = session.user?.email?.trim() ?? "";
@@ -76,5 +130,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/youtube/:path*"],
+  matcher: ["/youtube/:path*", "/sugoroku/:path*"],
 };
