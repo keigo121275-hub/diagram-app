@@ -33,24 +33,15 @@ interface SugorokuGridProps {
 const COLS = 5;
 
 export function SugorokuGrid({
-  tasks: initialTasks,
+  tasks,
   allTasks,
   currentMember,
   isAdmin,
   onDeleteTask,
   onReorder,
 }: SugorokuGridProps) {
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
-
-  // initialTasks が変わったとき（メンバー切り替え等）に同期
-  if (
-    initialTasks.length !== tasks.length ||
-    initialTasks.some((t, i) => t.id !== tasks[i]?.id)
-  ) {
-    setTasks(initialTasks);
-  }
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -83,7 +74,6 @@ export function SugorokuGrid({
     if (oldIndex === -1 || newIndex === -1) return;
 
     const newTasks = arrayMove(tasks, oldIndex, newIndex);
-    setTasks(newTasks);
     onReorder(newTasks);
   }
 
@@ -143,7 +133,6 @@ export function SugorokuGrid({
         </div>
       </SortableContext>
 
-      {/* ドラッグ中のゴーストカード */}
       <DragOverlay>
         {activeTask ? (
           <div

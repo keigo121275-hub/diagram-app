@@ -82,19 +82,19 @@ export default function SugorokuBoard({
   const handleReorder = async (newRootTasks: Task[]) => {
     if (!roadmap) return;
 
-    // ローカル state を即座に反映（楽観的 UI）
+    // order フィールドを新しい位置に更新してからローカル state に反映
+    const reorderedRootTasks = newRootTasks.map((t, i) => ({ ...t, order: i + 1 }));
     const otherTasks = rawTasks.filter((t) => t.parent_id !== null);
-    const updatedAllTasks = [...newRootTasks, ...otherTasks];
+    const updatedAllTasks = [...reorderedRootTasks, ...otherTasks];
     setLocalTasksMap((prev) => ({ ...prev, [activeMemberId]: updatedAllTasks }));
 
-    // DB に order を一括更新
+    // DB に order を一括更新（router.refresh は不要 - 楽観的 UI で管理）
     const supabase = createClient();
     await Promise.all(
-      newRootTasks.map((t, i) =>
-        supabase.from("tasks").update({ order: i + 1 }).eq("id", t.id)
+      reorderedRootTasks.map((t) =>
+        supabase.from("tasks").update({ order: t.order }).eq("id", t.id)
       )
     );
-    router.refresh();
   };
 
   if (roadmaps.length === 0 && !isAdmin) {
