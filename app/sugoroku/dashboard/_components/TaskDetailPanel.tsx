@@ -1,31 +1,33 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import type { Task } from "@/lib/supabase/types";
+import { STATUS_LABELS, STATUS_COLORS } from "@/app/sugoroku/_lib/constants";
 
 interface TaskDetailPanelProps {
   task: Task;
+  allTasks: Task[];
   onClose: () => void;
 }
 
-const STATUS_LABELS: Record<Task["status"], string> = {
-  todo: "未着手",
-  in_progress: "進行中",
-  pending_approval: "承認待ち",
-  done: "完了",
-  needs_revision: "要修正",
-};
-
-const STATUS_COLORS: Record<Task["status"], { bg: string; text: string }> = {
-  todo: { bg: "rgba(148,163,184,0.15)", text: "#94a3b8" },
-  in_progress: { bg: "rgba(96,165,250,0.15)", text: "#60a5fa" },
-  pending_approval: { bg: "rgba(250,204,21,0.15)", text: "#facc15" },
-  done: { bg: "rgba(74,222,128,0.15)", text: "#4ade80" },
-  needs_revision: { bg: "rgba(248,113,113,0.15)", text: "#f87171" },
-};
-
-export default function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
+export default function TaskDetailPanel({ task, allTasks, onClose }: TaskDetailPanelProps) {
+  const router = useRouter();
   const panelRef = useRef<HTMLDivElement>(null);
+
+  const [children, setChildren] = useState<Task[]>(
+    allTasks
+      .filter((t) => t.parent_id === task.id)
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+  );
+  const [largeStatus, setLargeStatus] = useState<Task["status"]>(task.status);
+  const [updatingLarge, setUpdatingLarge] = useState(false);
+  const [updatingChild, setUpdatingChild] = useState<string | null>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [addingTitle, setAddingTitle] = useState("");
+  const [addingLevel, setAddingLevel] = useState<"medium" | "small">("medium");
+  const [addingChild, setAddingChild] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -35,23 +37,95 @@ export default function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps)
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
-  const colors = STATUS_COLORS[task.status];
+  const largeColors = STATUS_COLORS[largeStatus];
+
+  const getNextAction = (
+    status: Task["status"]
+  ): { label: string; next: Task["status"] } | null => {
+    if (status === "todo") return { label: "進行中にする", next: "in_progress" };
+    if (status === "in_progress") return { label: "完了にする", next: "done" };
+    if (status === "needs_revision") return { label: "再開する", next: "in_progress" };
+    return null;
+  };
+
+  // 大タスク: 進行中にする / 再申請する
+  const updateLargeStatus = async (newStatus: Task["status"]) => {
+    setUpdatingLarge(true);
+    const supabase = createClient();
+    await supabase.from("tasks").update({ status: newStatus }).eq("id", task.id);
+    setLargeStatus(newStatus);
+    setUpdatingLarge(false);
+    router.refresh();
+  };
+
+  // 大タスク: 完了申請する（approval_requests に INSERT）
+  const submitApproval = async () => {
+    setUpdatingLarge(true);
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    // 既存の申請があれば削除してから再申請
+    await supabase.from("approval_requests").delete().eq("task_id", task.id);
+    await supabase.from("approval_requests").insert({
+      task_id: task.id,
+      requested_by: user?.id,
+      status: "pending",
+    });
+    await supabase.from("tasks").update({ status: "pending_approval" }).eq("id", task.id);
+    setLargeStatus("pending_approval");
+    setUpdatingLarge(false);
+    router.refresh();
+  };
+
+  // 子タスクのステータス変更
+  const updateChildStatus = async (childId: string, newStatus: Task["status"]) => {
+    setUpdatingChild(childId);
+    const supabase = createClient();
+    await supabase.from("tasks").update({ status: newStatus }).eq("id", childId);
+    setChildren((prev) =>
+      prev.map((c) => (c.id === childId ? { ...c, status: newStatus } : c))
+    );
+    setUpdatingChild(null);
+    router.refresh();
+  };
+
+  // 子タスクを追加
+  const addChildTask = async () => {
+    if (!addingTitle.trim()) return;
+    setAddingChild(true);
+    const supabase = createClient();
+    const { data: newTask } = await supabase
+      .from("tasks")
+      .insert({
+        roadmap_id: task.roadmap_id,
+        parent_id: task.id,
+        title: addingTitle.trim(),
+        level: addingLevel,
+        order: children.length + 1,
+        status: "todo",
+      })
+      .select()
+      .single();
+    if (newTask) {
+      setChildren((prev) => [...prev, newTask as Task]);
+    }
+    setAddingTitle("");
+    setShowAddForm(false);
+    setAddingChild(false);
+    router.refresh();
+  };
 
   return (
     <>
-      {/* オーバーレイ */}
       <div
         className="fixed inset-0 z-40"
         style={{ background: "rgba(0,0,0,0.4)" }}
         onClick={onClose}
       />
-
-      {/* パネル */}
       <div
         ref={panelRef}
         className="fixed top-0 right-0 h-full z-50 overflow-y-auto"
         style={{
-          width: "380px",
+          width: "420px",
           background: "#1a1d27",
           borderLeft: "1px solid #2e3347",
           animation: "slideIn 0.2s ease-out",
@@ -71,21 +145,15 @@ export default function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps)
           </h3>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg flex items-center justify-center transition-all"
+            className="w-8 h-8 rounded-lg flex items-center justify-center"
             style={{ background: "#232636", color: "#94a3b8" }}
-            onMouseOver={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.color = "#e2e8f0";
-            }}
-            onMouseOut={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.color = "#94a3b8";
-            }}
           >
             ✕
           </button>
         </div>
 
         <div className="p-6 space-y-5">
-          {/* タイトル */}
+          {/* タイトル・ステータス */}
           <div>
             <h2 className="text-base font-bold leading-snug" style={{ color: "#e2e8f0" }}>
               {task.title}
@@ -101,57 +169,212 @@ export default function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps)
               )}
               <span
                 className="px-2 py-0.5 rounded text-xs font-medium"
-                style={{ background: colors.bg, color: colors.text }}
+                style={{ background: largeColors.bg, color: largeColors.text }}
               >
-                {STATUS_LABELS[task.status]}
+                {STATUS_LABELS[largeStatus]}
               </span>
             </div>
           </div>
 
-          {/* ステータス変更（メンバー操作） */}
-          {task.status !== "done" && task.status !== "pending_approval" && (
+          {/* サブタスク（大タスクのみ） */}
+          {task.level === "large" && (
+            <div
+              className="rounded-xl p-4"
+              style={{ background: "#232636", border: "1px solid #2e3347" }}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-medium" style={{ color: "#94a3b8" }}>
+                  サブタスク{children.length > 0 && ` (${children.filter((c) => c.status === "done").length}/${children.length} 完了)`}
+                </p>
+                <button
+                  onClick={() => setShowAddForm(!showAddForm)}
+                  className="text-xs px-2 py-1 rounded-lg"
+                  style={{
+                    background: "#1a1d27",
+                    border: "1px solid #2e3347",
+                    color: "#94a3b8",
+                  }}
+                >
+                  + 追加
+                </button>
+              </div>
+
+              {/* 追加フォーム */}
+              {showAddForm && (
+                <div
+                  className="rounded-lg p-3 mb-3 space-y-2"
+                  style={{ background: "#1a1d27", border: "1px solid #6c63ff" }}
+                >
+                  <input
+                    value={addingTitle}
+                    onChange={(e) => setAddingTitle(e.target.value)}
+                    placeholder="サブタスク名を入力..."
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") addChildTask();
+                      if (e.key === "Escape") setShowAddForm(false);
+                    }}
+                    autoFocus
+                    className="w-full px-3 py-2 rounded-lg text-xs outline-none"
+                    style={{
+                      background: "#232636",
+                      border: "1px solid #2e3347",
+                      color: "#e2e8f0",
+                    }}
+                  />
+                  <div className="flex gap-2">
+                    <select
+                      value={addingLevel}
+                      onChange={(e) => setAddingLevel(e.target.value as "medium" | "small")}
+                      className="px-2 py-1.5 rounded-lg text-xs outline-none"
+                      style={{
+                        background: "#232636",
+                        border: "1px solid #2e3347",
+                        color: "#94a3b8",
+                      }}
+                    >
+                      <option value="medium">中タスク</option>
+                      <option value="small">小タスク</option>
+                    </select>
+                    <button
+                      onClick={addChildTask}
+                      disabled={!addingTitle.trim() || addingChild}
+                      className="flex-1 py-1.5 rounded-lg text-xs font-medium"
+                      style={{
+                        background: "rgba(108,99,255,0.2)",
+                        color: "#6c63ff",
+                        border: "1px solid rgba(108,99,255,0.4)",
+                        opacity: addingChild ? 0.5 : 1,
+                      }}
+                    >
+                      {addingChild ? "追加中..." : "追加する"}
+                    </button>
+                    <button
+                      onClick={() => { setShowAddForm(false); setAddingTitle(""); }}
+                      className="px-3 py-1.5 rounded-lg text-xs"
+                      style={{ background: "#232636", color: "#64748b" }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* 子タスクリスト */}
+              {children.length === 0 && !showAddForm ? (
+                <p className="text-xs" style={{ color: "#4a5568" }}>
+                  サブタスクがまだありません。「+ 追加」から作成できます。
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {children.map((child) => {
+                    const childColors = STATUS_COLORS[child.status];
+                    const nextAction = getNextAction(child.status);
+                    return (
+                      <div
+                        key={child.id}
+                        className="rounded-lg p-3"
+                        style={{
+                          background: "#1a1d27",
+                          border: `1px solid ${childColors.border}`,
+                        }}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium leading-snug" style={{ color: "#e2e8f0" }}>
+                              {child.title}
+                            </p>
+                            <div className="flex items-center gap-1 mt-1">
+                              <span
+                                className="text-xs px-1.5 py-0.5 rounded"
+                                style={{ background: "rgba(0,0,0,0.3)", color: "#64748b" }}
+                              >
+                                {child.level === "medium" ? "中" : "小"}
+                              </span>
+                              <span
+                                className="text-xs px-1.5 py-0.5 rounded font-medium"
+                                style={{ background: childColors.bg, color: childColors.text }}
+                              >
+                                {STATUS_LABELS[child.status]}
+                              </span>
+                            </div>
+                          </div>
+                          {nextAction && (
+                            <button
+                              onClick={() => updateChildStatus(child.id, nextAction.next)}
+                              disabled={updatingChild === child.id}
+                              className="shrink-0 text-xs px-2 py-1 rounded-lg whitespace-nowrap"
+                              style={{
+                                background: childColors.bg,
+                                color: childColors.text,
+                                border: `1px solid ${childColors.border}`,
+                                opacity: updatingChild === child.id ? 0.5 : 1,
+                              }}
+                            >
+                              {updatingChild === child.id ? "..." : nextAction.label}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 大タスクのステータス操作 */}
+          {largeStatus !== "done" && largeStatus !== "pending_approval" && (
             <div
               className="rounded-xl p-4"
               style={{ background: "#232636", border: "1px solid #2e3347" }}
             >
               <p className="text-xs font-medium mb-3" style={{ color: "#94a3b8" }}>
-                ステータス変更
+                マスのステータス変更
               </p>
               <div className="flex gap-2 flex-wrap">
-                {task.status === "todo" && (
+                {largeStatus === "todo" && (
                   <button
-                    className="px-3 py-2 rounded-lg text-xs font-medium transition-all"
+                    onClick={() => updateLargeStatus("in_progress")}
+                    disabled={updatingLarge}
+                    className="px-3 py-2 rounded-lg text-xs font-medium"
                     style={{
                       background: "rgba(96,165,250,0.15)",
                       color: "#60a5fa",
                       border: "1px solid rgba(96,165,250,0.3)",
+                      opacity: updatingLarge ? 0.5 : 1,
                     }}
                   >
-                    進行中にする
+                    {updatingLarge ? "..." : "進行中にする"}
                   </button>
                 )}
-                {task.status === "in_progress" && (
+                {largeStatus === "in_progress" && (
                   <button
-                    className="px-3 py-2 rounded-lg text-xs font-medium transition-all"
+                    onClick={submitApproval}
+                    disabled={updatingLarge}
+                    className="px-3 py-2 rounded-lg text-xs font-medium"
                     style={{
                       background: "rgba(250,204,21,0.15)",
                       color: "#facc15",
                       border: "1px solid rgba(250,204,21,0.3)",
+                      opacity: updatingLarge ? 0.5 : 1,
                     }}
                   >
-                    完了申請する
+                    {updatingLarge ? "..." : "完了申請する"}
                   </button>
                 )}
-                {task.status === "needs_revision" && (
+                {largeStatus === "needs_revision" && (
                   <button
-                    className="px-3 py-2 rounded-lg text-xs font-medium transition-all"
+                    onClick={submitApproval}
+                    disabled={updatingLarge}
+                    className="px-3 py-2 rounded-lg text-xs font-medium"
                     style={{
                       background: "rgba(96,165,250,0.15)",
                       color: "#60a5fa",
                       border: "1px solid rgba(96,165,250,0.3)",
+                      opacity: updatingLarge ? 0.5 : 1,
                     }}
                   >
-                    再申請する
+                    {updatingLarge ? "..." : "再申請する"}
                   </button>
                 )}
               </div>
@@ -159,7 +382,7 @@ export default function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps)
           )}
 
           {/* 承認待ちメッセージ */}
-          {task.status === "pending_approval" && (
+          {largeStatus === "pending_approval" && (
             <div
               className="rounded-xl p-4"
               style={{
@@ -174,7 +397,7 @@ export default function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps)
           )}
 
           {/* 完了メッセージ */}
-          {task.status === "done" && (
+          {largeStatus === "done" && (
             <div
               className="rounded-xl p-4"
               style={{
@@ -183,12 +406,12 @@ export default function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps)
               }}
             >
               <p className="text-xs" style={{ color: "#4ade80" }}>
-                このタスクは完了しました！
+                このマスは完了しました！
               </p>
             </div>
           )}
 
-          {/* コメント欄（Phase 3 で実装予定） */}
+          {/* コメント欄 */}
           <div>
             <p className="text-xs font-medium mb-3" style={{ color: "#94a3b8" }}>
               コメント

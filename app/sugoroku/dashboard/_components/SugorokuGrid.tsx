@@ -7,6 +7,7 @@ import TaskDetailPanel from "./TaskDetailPanel";
 
 interface SugorokuGridProps {
   tasks: Task[];
+  allTasks: Task[];
   currentMember: Member | null;
   isAdmin: boolean;
   onDeleteTask: (taskId: string) => void;
@@ -16,6 +17,7 @@ const COLS = 5;
 
 export function SugorokuGrid({
   tasks,
+  allTasks,
   currentMember,
   isAdmin,
   onDeleteTask,
@@ -79,6 +81,7 @@ export function SugorokuGrid({
       {selectedTask && (
         <TaskDetailPanel
           task={selectedTask}
+          allTasks={allTasks}
           onClose={() => setSelectedTask(null)}
         />
       )}

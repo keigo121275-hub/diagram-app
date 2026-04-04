@@ -44,9 +44,10 @@ export default function SugorokuBoard({
     : currentMember;
 
   const roadmap = roadmaps.find((r) => r.member_id === activeMemberId);
-  const tasks = (roadmap?.tasks ?? []).sort(
+  const allTasks = (roadmap?.tasks ?? []).sort(
     (a, b) => (a.order ?? 0) - (b.order ?? 0)
   );
+  const tasks = allTasks.filter((t) => t.parent_id === null);
   const doneCount = tasks.filter((t) => t.status === "done").length;
 
   const handleDeleteTask = async (taskId: string) => {
@@ -142,6 +143,7 @@ export default function SugorokuBoard({
           {tasks.length > 0 ? (
             <SugorokuGrid
               tasks={tasks}
+              allTasks={allTasks}
               currentMember={activeMember as Member}
               isAdmin={isAdmin}
               onDeleteTask={handleDeleteTask}

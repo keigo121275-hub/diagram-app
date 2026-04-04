@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Member } from "@/lib/supabase/types";
@@ -10,6 +11,17 @@ interface NavbarProps {
 
 export default function Navbar({ member }: NavbarProps) {
   const router = useRouter();
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    if (member?.role !== "admin") return;
+    const supabase = createClient();
+    supabase
+      .from("approval_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending")
+      .then(({ count }) => setPendingCount(count ?? 0));
+  }, [member?.role]);
 
   const handleLogout = async () => {
     const supabase = createClient();
@@ -32,7 +44,7 @@ export default function Navbar({ member }: NavbarProps) {
       }}
     >
       {/* ロゴ */}
-      <div className="flex items-center gap-3">
+      <a href="/sugoroku/dashboard" className="flex items-center gap-3">
         <div
           className="w-8 h-8 rounded-lg flex items-center justify-center text-base"
           style={{ background: "linear-gradient(135deg, #6c63ff, #4ade80)" }}
@@ -50,20 +62,39 @@ export default function Navbar({ member }: NavbarProps) {
             管理者
           </span>
         )}
-      </div>
+      </a>
 
       {/* 右側メニュー */}
       <div className="flex items-center gap-4">
         {member?.role === "admin" && (
-          <a
-            href="/sugoroku/admin"
-            className="text-sm transition-colors"
-            style={{ color: "#94a3b8" }}
-            onMouseOver={(e) => (e.currentTarget.style.color = "#e2e8f0")}
-            onMouseOut={(e) => (e.currentTarget.style.color = "#94a3b8")}
-          >
-            管理画面
-          </a>
+          <div className="flex items-center gap-4">
+            <a
+              href="/sugoroku/admin/members"
+              className="text-sm transition-colors"
+              style={{ color: "#94a3b8" }}
+              onMouseOver={(e) => (e.currentTarget.style.color = "#e2e8f0")}
+              onMouseOut={(e) => (e.currentTarget.style.color = "#94a3b8")}
+            >
+              メンバー管理
+            </a>
+            <a
+              href="/sugoroku/admin/approval"
+              className="relative text-sm transition-colors flex items-center gap-1.5"
+              style={{ color: "#94a3b8" }}
+              onMouseOver={(e) => (e.currentTarget.style.color = "#e2e8f0")}
+              onMouseOut={(e) => (e.currentTarget.style.color = "#94a3b8")}
+            >
+              承認リスト
+              {pendingCount > 0 && (
+                <span
+                  className="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold"
+                  style={{ background: "#f87171", color: "#fff" }}
+                >
+                  {pendingCount}
+                </span>
+              )}
+            </a>
+          </div>
         )}
 
         {/* アバター */}

@@ -65,7 +65,10 @@ export default function NewRoadmapPage() {
   const handleSave = async () => {
     if (!selectedMemberId || !result) return;
     setSaving(true);
+    setError(null);
     const supabase = createClient();
+
+    // 1. ロードマップを作成
     const { data: roadmap, error: rmErr } = await supabase
       .from("roadmaps")
       .insert({ member_id: selectedMemberId, title: result.roadmap_title })
@@ -76,20 +79,86 @@ export default function NewRoadmapPage() {
       setSaving(false);
       return;
     }
-    const { error: tasksErr } = await supabase.from("tasks").insert(
-      tasks.map((t, i) => ({
-        roadmap_id: roadmap.id,
-        title: t.title,
-        level: t.level,
-        order: i + 1,
-        status: "todo" as const,
-      }))
-    );
-    if (tasksErr) {
-      setError("タスクの保存に失敗しました: " + tasksErr.message);
+
+    // 2. 大タスクを INSERT → 返却された id を取得
+    const { data: insertedLarge, error: largeErr } = await supabase
+      .from("tasks")
+      .insert(
+        tasks.map((t, i) => ({
+          roadmap_id: roadmap.id,
+          title: t.title,
+          level: t.level,
+          order: i + 1,
+          status: "todo" as const,
+        }))
+      )
+      .select("id, title");
+    if (largeErr || !insertedLarge) {
+      setError("タスクの保存に失敗しました: " + largeErr?.message);
       setSaving(false);
       return;
     }
+
+    // 3. 子タスク（中・小）を parent_id 付きで INSERT
+    const childRows = tasks.flatMap((t, i) => {
+      const parentId = insertedLarge[i]?.id;
+      if (!parentId) return [];
+      return (t.children ?? []).flatMap((child, ci) => {
+        const mediumRow = {
+          roadmap_id: roadmap.id,
+          parent_id: parentId,
+          title: child.title,
+          level: child.level,
+          order: ci + 1,
+          status: "todo" as const,
+        };
+        const grandchildRows = (child.children ?? []).map((gc, gci) => ({
+          roadmap_id: roadmap.id,
+          parent_id: null as string | null, // 中タスクのIDが必要なため後で処理
+          title: gc.title,
+          level: gc.level,
+          order: gci + 1,
+          status: "todo" as const,
+          _parentTitle: child.title, // 中タスクとの紐付け用（仮）
+        }));
+        return [mediumRow, ...grandchildRows];
+      });
+    });
+
+    // 中タスクのみ先に INSERT して id を取得し、小タスクに parent_id をセット
+    const mediumRows = childRows.filter((r) => r.level === "medium");
+    const smallRowsWithParentTitle = childRows.filter((r) => r.level === "small");
+
+    if (mediumRows.length > 0) {
+      const { data: insertedMedium, error: mediumErr } = await supabase
+        .from("tasks")
+        .insert(mediumRows.map(({ _parentTitle: _, ...rest }) => rest))
+        .select("id, title");
+      if (mediumErr) {
+        setError("中タスクの保存に失敗しました: " + mediumErr.message);
+        setSaving(false);
+        return;
+      }
+
+      // 小タスクに正しい parent_id をセット
+      if (smallRowsWithParentTitle.length > 0 && insertedMedium) {
+        const titleToId = Object.fromEntries(
+          insertedMedium.map((m) => [m.title, m.id])
+        );
+        const smallRows = smallRowsWithParentTitle.map(({ _parentTitle, ...rest }) => ({
+          ...rest,
+          parent_id: titleToId[_parentTitle as string] ?? null,
+        }));
+        const { error: smallErr } = await supabase.from("tasks").insert(smallRows);
+        if (smallErr) {
+          setError("小タスクの保存に失敗しました: " + smallErr.message);
+          setSaving(false);
+          return;
+        }
+      }
+    }
+
+    // 4. 生成ログを保存
     const { data: { user } } = await supabase.auth.getUser();
     await supabase.from("roadmap_generations").insert({
       roadmap_id: roadmap.id,
@@ -97,6 +166,7 @@ export default function NewRoadmapPage() {
       input_text: inputText,
       output_json: result as unknown as Json,
     });
+
     setStep(4);
     setSaving(false);
   };
