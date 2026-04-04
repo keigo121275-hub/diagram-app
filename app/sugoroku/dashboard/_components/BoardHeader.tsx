@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 interface BoardHeaderProps {
@@ -23,9 +23,16 @@ export function BoardHeader({
   onDeleteAllClick,
 }: BoardHeaderProps) {
   const [goal, setGoal] = useState(description ?? "");
-  const [editing, setEditing] = useState(!description); // 未設定なら最初から入力モード
+  const [editing, setEditing] = useState(!description);
   const [draft, setDraft] = useState(description ?? "");
   const [saving, setSaving] = useState(false);
+
+  // メンバー切り替え時や外部からの description 変化に追従
+  useEffect(() => {
+    setGoal(description ?? "");
+    setDraft(description ?? "");
+    setEditing(!description);
+  }, [description]);
 
   const handleConfirm = async () => {
     if (!roadmapId || !draft.trim()) return;

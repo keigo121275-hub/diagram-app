@@ -16,6 +16,7 @@ interface SugorokuBoardProps {
   currentMember: Member | null;
   allMembers: Pick<Member, "id" | "name" | "email" | "avatar_url" | "role">[];
   roadmaps: RoadmapWithTasks[];
+  initialMemberId?: string | null;
 }
 
 function sortTasks(tasks: Task[]): Task[] {
@@ -31,12 +32,21 @@ export default function SugorokuBoard({
   currentMember,
   allMembers,
   roadmaps,
+  initialMemberId,
 }: SugorokuBoardProps) {
   const router = useRouter();
   const isAdmin = currentMember?.role === "admin";
-  const [selectedMemberId, setSelectedMemberId] = useState<string>(
-    currentMember?.id ?? ""
-  );
+
+  // URL の ?member= を優先して初期メンバーを決定（admin のみ）
+  const defaultMemberId = (() => {
+    if (!isAdmin) return currentMember?.id ?? "";
+    if (initialMemberId && allMembers.some((m) => m.id === initialMemberId)) {
+      return initialMemberId;
+    }
+    return currentMember?.id ?? "";
+  })();
+
+  const [selectedMemberId, setSelectedMemberId] = useState<string>(defaultMemberId);
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
   const [deletingAll, setDeletingAll] = useState(false);
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
@@ -119,7 +129,11 @@ export default function SugorokuBoard({
     );
   };
 
-  /** TaskDetailPanel から大タスクの変更通知を受け取り、ローカル state を即時更新 */
+  /** メンバータブ切り替え：URL を更新してリロード時も同じ位置を保持 */
+  const handleSelectMember = (memberId: string) => {
+    setSelectedMemberId(memberId);
+    router.push(`?member=${memberId}`, { scroll: false });
+  };
   const handleTaskUpdated = (id: string, patch: Partial<Task>) => {
     setLocalTasksMap((prev) => {
       const current = prev[activeMemberId] ?? roadmap?.tasks ?? [];
@@ -165,7 +179,7 @@ export default function SugorokuBoard({
           members={allMembers}
           selectedMemberId={selectedMemberId}
           roadmaps={roadmaps}
-          onSelect={setSelectedMemberId}
+          onSelect={handleSelectMember}
         />
       )}
 

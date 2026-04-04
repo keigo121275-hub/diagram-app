@@ -5,7 +5,11 @@ import type { RoadmapWithTasks } from "@/app/sugoroku/_lib/types";
 import SugorokuBoard from "./_components/SugorokuBoard";
 import Navbar from "./_components/Navbar";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ member?: string }>;
+}) {
   const supabase = await createClient();
   const authResult = await supabase.auth.getUser();
   const user = authResult.data.user;
@@ -14,6 +18,8 @@ export default async function DashboardPage() {
     redirect("/sugoroku/login");
     return null;
   }
+
+  const { member: memberParam } = await searchParams;
 
   const memberResult = await supabase
     .from("members")
@@ -44,6 +50,7 @@ export default async function DashboardPage() {
           currentMember={member}
           allMembers={allMembers}
           roadmaps={roadmaps}
+          initialMemberId={memberParam ?? null}
         />
       </main>
     </div>
