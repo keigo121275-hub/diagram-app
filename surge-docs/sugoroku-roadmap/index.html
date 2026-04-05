@@ -815,6 +815,7 @@
   <button class="demo-btn" onclick="showScreen('admin-approval')">④ 承認リスト</button>
   <button class="demo-btn highlight" onclick="showScreen('profile')">⑤ 🆕 プロフィール写真設定</button>
   <button class="demo-btn" onclick="showScreen('game-ui')" style="border-color:#4ade80;color:#4ade80">⑥ ✨ ゲームUI（新）</button>
+  <button class="demo-btn" onclick="showScreen('grid-ux')" style="border-color:#60a5fa;color:#60a5fa">⑦ 🗺️ グリッド改善 & メモ・リンク</button>
 </div>
 
 
@@ -2087,6 +2088,242 @@
     document.getElementById('quest-overlay').classList.remove('open');
     document.getElementById('quest-panel').classList.remove('open');
   }
+
+  function showGridPanel(title) {
+    document.getElementById('gux-title').textContent = title;
+    document.getElementById('gux-overlay').style.display = 'block';
+    document.getElementById('gux-panel').style.display = 'block';
+  }
+  function closeGridPanel() {
+    document.getElementById('gux-overlay').style.display = 'none';
+    document.getElementById('gux-panel').style.display = 'none';
+  }
 </script>
+
+<!-- ===== ⑦ GRID UX & MEMO/LINK ===== -->
+<div id="screen-grid-ux" class="screen">
+  <nav>
+    <div class="nav-logo"><span class="icon">🎲</span> すごろくロードマップ</div>
+    <div class="nav-tabs">
+      <button class="nav-tab active">ボード</button>
+    </div>
+    <div class="nav-actions">
+      <div class="nav-avatar-wrap">
+        <div class="nav-avatar">🧑</div>
+      </div>
+    </div>
+  </nav>
+
+  <div style="max-width:900px;margin:0 auto;padding:32px 24px;flex:1">
+    <!-- ヘッダー -->
+    <div style="background:#13111e;border:1px solid #3d3566;border-radius:16px;padding:14px 20px;margin-bottom:20px;display:flex;align-items:center;gap:12px">
+      <span style="font-size:18px">🗺️</span>
+      <div>
+        <div style="font-size:10px;color:#a5b4fc;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px">ステージミッション</div>
+        <div style="font-size:14px;font-weight:600;color:#e2e8f0">3ヶ月後にひとりで案件をクローズできる営業担当になる</div>
+      </div>
+    </div>
+
+    <!-- EXP ゲージ -->
+    <div style="background:#13111e;border:1px solid #2e3347;border-radius:16px;padding:16px 20px;margin-bottom:24px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:22px">⚔️</span>
+          <div>
+            <div style="font-size:10px;color:#6b7280;font-weight:700;text-transform:uppercase;letter-spacing:.07em">称号</div>
+            <div style="font-size:13px;font-weight:800;color:#a78bfa">熟練の探索者</div>
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:24px;font-weight:800;color:#e2e8f0">50%</div>
+          <div style="font-size:11px;color:#94a3b8">3 / 6 マスクリア</div>
+        </div>
+      </div>
+      <div style="height:12px;background:#1e2130;border-radius:99px;overflow:hidden;position:relative">
+        <div style="position:absolute;inset-y:0;left:0;width:50%;background:linear-gradient(90deg,#6c63ff,#a78bfa,#4ade80);border-radius:99px;box-shadow:0 0 10px rgba(108,99,255,.5)"></div>
+      </div>
+    </div>
+
+    <!-- 3列グリッドラベル -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div style="font-size:12px;color:#6b7280;font-weight:600">🗺️ マップ（3列 / セル大きめ）</div>
+      <div style="font-size:11px;color:#4a5568">← 変更前 5列と比較</div>
+    </div>
+
+    <!-- ★ 3列グリッド（新） -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:32px">
+
+      <!-- Cell 1: START -->
+      <div onclick="showGridPanel('営業の基礎知識とヒアリング技術')" style="position:relative;min-height:140px;background:#052e16;border:1.5px solid rgba(74,222,128,.4);border-radius:14px;padding:16px;cursor:pointer;transition:all .2s">
+        <div style="position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:rgba(74,222,128,.15);border:1px solid rgba(74,222,128,.4);color:#4ade80;font-size:11px;font-weight:800;padding:2px 10px;border-radius:99px;white-space:nowrap">🏁 START</div>
+        <div style="position:absolute;top:10px;left:10px;width:20px;height:20px;border-radius:50%;background:#0f1117;color:#94a3b8;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">1</div>
+        <div style="margin-top:22px">
+          <p style="font-size:14px;font-weight:600;color:#86efac;line-height:1.5">営業の基礎知識とヒアリング技術</p>
+        </div>
+        <div style="margin-top:10px;display:flex;align-items:center;justify-content:space-between">
+          <span style="background:rgba(74,222,128,.12);color:#4ade80;font-size:11px;font-weight:600;padding:3px 8px;border-radius:6px">🏆 達成</span>
+        </div>
+        <!-- 完了スタンプ -->
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;border-radius:14px">
+          <span style="font-size:52px;opacity:.15;transform:rotate(-22deg)">✅</span>
+        </div>
+      </div>
+
+      <!-- Cell 2 -->
+      <div onclick="showGridPanel('提案書・見積書の作成')" style="position:relative;min-height:140px;background:#0f1e40;border:1px solid #1e3a8a;border-radius:14px;padding:16px;cursor:pointer;transition:all .2s">
+        <div style="position:absolute;top:10px;left:10px;width:20px;height:20px;border-radius:50%;background:#0f1117;color:#94a3b8;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">2</div>
+        <div style="margin-top:22px">
+          <p style="font-size:14px;font-weight:600;color:#e2e8f0;line-height:1.5">提案書・見積書の作成スキル</p>
+        </div>
+        <div style="margin-top:10px;display:flex;align-items:center;justify-content:space-between">
+          <span style="background:rgba(96,165,250,.12);color:#60a5fa;font-size:11px;font-weight:600;padding:3px 8px;border-radius:6px">⚔️ 挑戦中</span>
+          <span style="background:rgba(108,99,255,.12);color:#a5b4fc;font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid rgba(108,99,255,.2)">5/31</span>
+        </div>
+      </div>
+
+      <!-- Cell 3 -->
+      <div onclick="showGridPanel('ロールプレイング商談演習')" style="position:relative;min-height:140px;background:#1e2130;border:1px solid #2e3347;border-radius:14px;padding:16px;cursor:pointer;transition:all .2s">
+        <div style="position:absolute;top:10px;left:10px;width:20px;height:20px;border-radius:50%;background:#0f1117;color:#94a3b8;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">3</div>
+        <div style="margin-top:22px">
+          <p style="font-size:14px;font-weight:600;color:#e2e8f0;line-height:1.5">ロールプレイング商談演習</p>
+        </div>
+        <div style="margin-top:10px">
+          <span style="background:#1e2130;color:#94a3b8;font-size:11px;font-weight:600;padding:3px 8px;border-radius:6px;border:1px solid #2e3347">📋 受注待ち</span>
+        </div>
+      </div>
+
+      <!-- Cell 4 -->
+      <div onclick="showGridPanel('クロージング技術の習得')" style="position:relative;min-height:140px;background:#1e2130;border:1px solid #2e3347;border-radius:14px;padding:16px;cursor:pointer;transition:all .2s">
+        <div style="position:absolute;top:10px;left:10px;width:20px;height:20px;border-radius:50%;background:#0f1117;color:#94a3b8;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">4</div>
+        <div style="margin-top:22px">
+          <p style="font-size:14px;font-weight:600;color:#e2e8f0;line-height:1.5">クロージング技術の習得</p>
+        </div>
+        <div style="margin-top:10px">
+          <span style="background:#1e2130;color:#94a3b8;font-size:11px;font-weight:600;padding:3px 8px;border-radius:6px;border:1px solid #2e3347">📋 受注待ち</span>
+        </div>
+      </div>
+
+      <!-- Cell 5 -->
+      <div onclick="showGridPanel('既存顧客フォローとアップセル')" style="position:relative;min-height:140px;background:#1e2130;border:1px solid #2e3347;border-radius:14px;padding:16px;cursor:pointer;transition:all .2s">
+        <div style="position:absolute;top:10px;left:10px;width:20px;height:20px;border-radius:50%;background:#0f1117;color:#94a3b8;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">5</div>
+        <div style="margin-top:22px">
+          <p style="font-size:14px;font-weight:600;color:#e2e8f0;line-height:1.5">既存顧客フォローとアップセル</p>
+        </div>
+        <div style="margin-top:10px">
+          <span style="background:#1e2130;color:#94a3b8;font-size:11px;font-weight:600;padding:3px 8px;border-radius:6px;border:1px solid #2e3347">📋 受注待ち</span>
+        </div>
+      </div>
+
+      <!-- Cell 6: GOAL -->
+      <div onclick="showGridPanel('独立案件クローズ達成')" style="position:relative;min-height:140px;background:#2a1f00;border:1.5px solid rgba(250,204,21,.4);border-radius:14px;padding:16px;cursor:pointer;transition:all .2s">
+        <div style="position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:rgba(250,204,21,.15);border:1px solid rgba(250,204,21,.4);color:#facc15;font-size:11px;font-weight:800;padding:2px 10px;border-radius:99px;white-space:nowrap">🏆 GOAL</div>
+        <div style="position:absolute;top:10px;left:10px;width:20px;height:20px;border-radius:50%;background:#0f1117;color:#94a3b8;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">6</div>
+        <div style="margin-top:22px">
+          <p style="font-size:14px;font-weight:600;color:#fef08a;line-height:1.5">独立案件クローズ達成</p>
+        </div>
+        <div style="margin-top:10px">
+          <span style="background:rgba(250,204,21,.1);color:#facc15;font-size:11px;font-weight:600;padding:3px 8px;border-radius:6px;border:1px solid rgba(250,204,21,.25)">📋 受注待ち</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 比較：旧5列グリッド（縮小イメージ） -->
+    <div style="margin-bottom:32px">
+      <div style="font-size:12px;color:#4a5568;font-weight:600;margin-bottom:8px">← 変更前（5列・小さいセル）</div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;opacity:.5">
+        <div style="min-height:70px;background:#1e2130;border:1px solid #2e3347;border-radius:8px;padding:8px"><p style="font-size:10px;color:#94a3b8;margin-top:12px">マス1</p><span style="font-size:9px;color:#6b7280">未着手</span></div>
+        <div style="min-height:70px;background:#1e2130;border:1px solid #2e3347;border-radius:8px;padding:8px"><p style="font-size:10px;color:#94a3b8;margin-top:12px">マス2</p><span style="font-size:9px;color:#6b7280">未着手</span></div>
+        <div style="min-height:70px;background:#1e2130;border:1px solid #2e3347;border-radius:8px;padding:8px"><p style="font-size:10px;color:#94a3b8;margin-top:12px">マス3</p><span style="font-size:9px;color:#6b7280">未着手</span></div>
+        <div style="min-height:70px;background:#1e2130;border:1px solid #2e3347;border-radius:8px;padding:8px"><p style="font-size:10px;color:#94a3b8;margin-top:12px">マス4</p><span style="font-size:9px;color:#6b7280">未着手</span></div>
+        <div style="min-height:70px;background:#1e2130;border:1px solid #2e3347;border-radius:8px;padding:8px"><p style="font-size:10px;color:#94a3b8;margin-top:12px">マス5</p><span style="font-size:9px;color:#6b7280">未着手</span></div>
+      </div>
+    </div>
+
+    <!-- メモ・リンク説明 -->
+    <div style="background:#13111e;border:1px solid #3d3566;border-radius:16px;padding:16px 20px;margin-bottom:12px">
+      <div style="font-size:12px;color:#a5b4fc;font-weight:700;margin-bottom:6px">👆 マスをクリックするとクエストパネルが開きます</div>
+      <div style="font-size:12px;color:#6b7280">中タスク・小タスクに「メモ・リンク」欄が追加されています。URLを貼るとリンク化します。</div>
+    </div>
+  </div>
+
+  <!-- ★ クエストカード（メモ・リンク版） -->
+  <div id="gux-overlay" onclick="closeGridPanel()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:40"></div>
+  <div id="gux-panel" style="display:none;position:fixed;top:0;right:0;height:100%;width:440px;background:linear-gradient(180deg,#1a1d27,#18162e);border-left:1px solid #3d3566;overflow-y:auto;z-index:50">
+    <div style="position:sticky;top:0;padding:16px 20px;background:linear-gradient(135deg,rgba(26,29,39,.97),rgba(30,26,58,.97));border-bottom:1px solid #3d3566;display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:18px">⚔️</span>
+        <span id="gux-title" style="font-size:14px;font-weight:700;color:#e2e8f0">クエスト詳細</span>
+      </div>
+      <button onclick="closeGridPanel()" style="width:32px;height:32px;border-radius:8px;border:none;background:#232636;color:#94a3b8;cursor:pointer;font-size:16px">✕</button>
+    </div>
+
+    <div style="padding:20px;display:flex;flex-direction:column;gap:16px">
+      <!-- ステータス -->
+      <div style="background:#232636;border:1px solid #2e3347;border-radius:12px;padding:14px">
+        <div style="font-size:11px;color:#94a3b8;margin-bottom:8px">ステータス</div>
+        <span style="background:rgba(96,165,250,.15);color:#60a5fa;font-size:12px;font-weight:700;padding:4px 10px;border-radius:6px;border:1px solid rgba(96,165,250,.3)">⚔️ 挑戦中</span>
+      </div>
+
+      <!-- サブクエスト（メモ・リンクあり） -->
+      <div style="background:#232636;border:1px solid #2e3347;border-radius:12px;padding:14px">
+        <div style="font-size:11px;color:#94a3b8;font-weight:700;margin-bottom:12px">📋 サブクエスト (1/2 達成)</div>
+
+        <!-- 中タスク1（メモ・リンクあり） -->
+        <div style="background:#1a1d27;border:1px solid rgba(96,165,250,.25);border-radius:10px;padding:12px;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap-8px;margin-bottom:8px">
+            <span style="font-size:12px;font-weight:700;color:#60a5fa">1. 提案書フォーマットを学ぶ</span>
+            <span style="margin-left:auto;background:rgba(74,222,128,.12);color:#4ade80;font-size:10px;font-weight:600;padding:2px 7px;border-radius:5px">🏆 達成</span>
+          </div>
+          <!-- メモ・リンク欄（展開済み） -->
+          <div style="background:#141622;border:1px solid #2e3347;border-radius:8px;padding:10px;margin-top:8px">
+            <div style="font-size:10px;color:#6c63ff;font-weight:700;margin-bottom:6px">📝 メモ・リンク</div>
+            <div style="font-size:12px;color:#cbd5e1;line-height:1.7">
+              参考資料はこちら →
+              <a href="#" onclick="return false" style="color:#60a5fa;text-decoration:underline">https://notion.so/proposal-template</a><br>
+              ※ Notion の提案書テンプレを使うこと
+            </div>
+          </div>
+          <!-- 小タスク -->
+          <div style="margin-top:10px;padding-left:8px;border-left:2px solid rgba(96,165,250,.2)">
+            <div style="background:#141622;border:1px solid rgba(74,222,128,.2);border-radius:8px;padding:10px;margin-bottom:8px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                <span style="font-size:11px;color:#94a3b8">1-1. Word テンプレートを入手</span>
+                <span style="background:rgba(74,222,128,.1);color:#4ade80;font-size:10px;padding:1px 6px;border-radius:4px">🏆 達成</span>
+              </div>
+              <!-- 小タスクのメモ・リンク欄 -->
+              <div style="background:#0f1117;border:1px dashed rgba(108,99,255,.25);border-radius:6px;padding:8px;margin-top:4px">
+                <div style="font-size:10px;color:#6c63ff;font-weight:700;margin-bottom:4px">📝 メモ・リンク</div>
+                <div style="font-size:11px;color:#6b7280">（メモなし）</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 中タスク2（メモ入力中デモ） -->
+        <div style="background:#1a1d27;border:1px solid rgba(96,165,250,.25);border-radius:10px;padding:12px">
+          <div style="display:flex;align-items:center;margin-bottom:8px">
+            <span style="font-size:12px;font-weight:700;color:#e2e8f0">2. 実際に提案書を作成する</span>
+            <span style="margin-left:auto;background:rgba(96,165,250,.12);color:#60a5fa;font-size:10px;font-weight:600;padding:2px 7px;border-radius:5px">⚔️ 挑戦中</span>
+          </div>
+          <!-- メモ・リンク入力欄（フォーカス状態） -->
+          <div style="background:#141622;border:1px solid rgba(108,99,255,.5);border-radius:8px;padding:10px;margin-top:8px">
+            <div style="font-size:10px;color:#6c63ff;font-weight:700;margin-bottom:6px">📝 メモ・リンク（編集中）</div>
+            <div style="background:#0f1117;border:1px solid rgba(108,99,255,.4);border-radius:6px;padding:8px;font-size:12px;color:#94a3b8;min-height:60px">
+              上司に見せる前に https://example.com/sample-proposal のフォーマットを参考にする
+            </div>
+            <div style="font-size:10px;color:#4a5568;margin-top:4px">※ フォーカスが外れると自動保存 / URL は自動でリンク化されます</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- アクションボタン -->
+      <div style="background:#232636;border:1px solid #3d3566;border-radius:12px;padding:14px">
+        <div style="font-size:11px;color:#a5b4fc;font-weight:700;margin-bottom:10px">⚔️ クエストを進める</div>
+        <button style="width:100%;padding:10px;border-radius:10px;border:1px solid rgba(250,204,21,.3);background:rgba(250,204,21,.12);color:#facc15;font-size:13px;font-weight:700;cursor:pointer">✨ クリア申請する</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- ===== END ⑦ ===== -->
 </body>
 </html>
