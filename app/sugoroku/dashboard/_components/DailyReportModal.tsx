@@ -30,10 +30,17 @@ export function DailyReportModal({
     if (!body.trim() || submitting) return;
     setSubmitting(true);
     const supabase = createClient();
+
+    // 日本時間（JST）での日付を明示的に設定
+    const jstDate = new Intl.DateTimeFormat("sv-SE", {
+      timeZone: "Asia/Tokyo",
+    }).format(new Date()); // "YYYY-MM-DD" 形式
+
     await supabase.from("daily_reports").insert({
       member_id: memberId,
       roadmap_id: roadmapId,
       body: body.trim(),
+      date: jstDate,
     });
     setSubmitting(false);
     onSubmitted();

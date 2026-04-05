@@ -17,6 +17,22 @@ export type ReportItem = {
 // ---- 日付ユーティリティ ----
 const DAYS_JA = ["日", "月", "火", "水", "木", "金", "土"];
 
+/** UTC タイムスタンプ文字列を JST の "YYYY-MM-DD" に変換 */
+function toJSTDate(utcStr: string): string {
+  return new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Asia/Tokyo",
+  }).format(new Date(utcStr));
+}
+
+/** UTC タイムスタンプ文字列を JST の "HH:MM" に変換 */
+function toJSTTime(utcStr: string): string {
+  return new Date(utcStr).toLocaleTimeString("ja-JP", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Tokyo",
+  });
+}
+
 function getCurrentWeekStart(): string {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -82,13 +98,16 @@ export default function DailyReportList({
     async function fetchReports() {
       setLoading(true);
 
+      // UTC/JST 境界ズレ対策: ±1日広めに取得してクライアント側でJST日付フィルタ
+      const queryStart = addDays(weekStart, -1);
+      const queryEnd = addDays(weekEnd, 1);
+
       const { data: reports } = await supabase
         .from("daily_reports")
         .select("id, body, date, created_at, member_id, roadmap_id")
         .eq("member_id", selectedMemberId)
-        .gte("date", weekStart)
-        .lte("date", weekEnd)
-        .order("date", { ascending: true })
+        .gte("date", queryStart)
+        .lte("date", queryEnd)
         .order("created_at", { ascending: true });
 
       if (cancelled) return;
@@ -117,17 +136,21 @@ export default function DailyReportList({
         allMembers.find((m) => m.id === selectedMemberId)?.name ?? "不明";
 
       setItems(
-        (reports ?? []).map((r) => ({
-          id: r.id,
-          body: r.body,
-          date: r.date,
-          created_at: r.created_at,
-          member_id: r.member_id ?? "",
-          member_name: memberName,
-          roadmap_title: r.roadmap_id
-            ? (roadmapMap.get(r.roadmap_id) ?? "不明")
-            : "不明",
-        }))
+        (reports ?? [])
+          .map((r) => ({
+            id: r.id,
+            body: r.body,
+            // created_at から JST 日付を算出（DBの date フィールドはUTCズレの可能性あり）
+            date: toJSTDate(r.created_at),
+            created_at: r.created_at,
+            member_id: r.member_id ?? "",
+            member_name: memberName,
+            roadmap_title: r.roadmap_id
+              ? (roadmapMap.get(r.roadmap_id) ?? "不明")
+              : "不明",
+          }))
+          // JST 日付でこの週のみに絞り込む
+          .filter((r) => r.date >= weekStart && r.date <= weekEnd)
       );
       setLoading(false);
     }
@@ -268,10 +291,7 @@ export default function DailyReportList({
                         {item.roadmap_title}
                       </span>
                       <span className="text-xs" style={{ color: "#4a5568" }}>
-                        {new Date(item.created_at).toLocaleTimeString("ja-JP", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                        {toJSTTime(item.created_at)}
                       </span>
                     </div>
                     <p
