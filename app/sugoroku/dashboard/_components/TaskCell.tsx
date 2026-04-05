@@ -20,10 +20,9 @@ interface TaskCellProps {
 function getCellType(
   cellIndex: number,
   totalCells: number
-): "start" | "goal" | "checkpoint" | "normal" {
+): "start" | "goal" | "normal" {
   if (cellIndex === 0) return "start";
   if (cellIndex === totalCells - 1) return "goal";
-  if ((cellIndex + 1) % 5 === 0) return "checkpoint";
   return "normal";
 }
 
@@ -41,13 +40,6 @@ const CELL_TYPE_STYLES = {
     badgeBg: "rgba(250,204,21,0.15)",
     badgeBorder: "rgba(250,204,21,0.35)",
     glowColor: "rgba(250,204,21,0.25)",
-  },
-  checkpoint: {
-    badge: "⭐ CP",
-    badgeColor: "#a78bfa",
-    badgeBg: "rgba(167,139,250,0.15)",
-    badgeBorder: "rgba(167,139,250,0.35)",
-    glowColor: "rgba(167,139,250,0.2)",
   },
   normal: null,
 };

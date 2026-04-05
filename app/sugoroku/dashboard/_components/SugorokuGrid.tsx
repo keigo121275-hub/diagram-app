@@ -154,7 +154,6 @@ export function SugorokuGrid({
             <div className="space-y-0">
               {rows.map((row, rowIdx) => {
                 const displayRow = row;
-                const isLastRow = rowIdx === rows.length - 1;
 
                 return (
                   <div key={rowIdx}>
@@ -183,21 +182,7 @@ export function SugorokuGrid({
                       })}
                     </div>
 
-                    {/* 行コネクター（最終行以外） */}
-                    {!isLastRow && (
-                      <div
-                        className="relative flex items-center justify-end py-1"
-                        style={{ paddingRight: "calc(10% - 8px)" }}
-                      >
-                        <div
-                          className="flex flex-col items-center gap-0.5"
-                          style={{ color: "#4a5568" }}
-                        >
-                          <span style={{ fontSize: "13px", lineHeight: 1 }}>│</span>
-                          <span style={{ fontSize: "13px", lineHeight: 1 }}>↓</span>
-                        </div>
-                      </div>
-                    )}
+                    {/* 行コネクターなし */}
                   </div>
                 );
               })}
