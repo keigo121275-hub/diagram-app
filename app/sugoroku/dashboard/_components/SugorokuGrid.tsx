@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -54,12 +54,12 @@ export function SugorokuGrid({
     })
   );
 
-  const currentIndex = (() => {
+  const currentIndex = useMemo(() => {
     const lastDone = [...tasks].reverse().findIndex((t) => t.status === "done");
     if (lastDone === -1) return 0;
     const lastDoneIdx = tasks.length - 1 - lastDone;
     return Math.min(lastDoneIdx + 1, tasks.length - 1);
-  })();
+  }, [tasks]);
 
   function handleDragStart(event: DragStartEvent) {
     const task = tasks.find((t) => t.id === event.active.id);
@@ -79,10 +79,25 @@ export function SugorokuGrid({
     onReorder(newTasks);
   }
 
-  const rows: Task[][] = [];
-  for (let i = 0; i < tasks.length; i += COLS) {
-    rows.push(tasks.slice(i, i + COLS));
-  }
+  // tasks が変わったときだけ再計算
+  const rows = useMemo<Task[][]>(() => {
+    const result: Task[][] = [];
+    for (let i = 0; i < tasks.length; i += COLS) {
+      result.push(tasks.slice(i, i + COLS));
+    }
+    return result;
+  }, [tasks]);
+
+  // O(n²) の findIndex を O(1) Map ルックアップに変換
+  const originalIndexMap = useMemo(
+    () => new Map(tasks.map((t, i) => [t.id, i])),
+    [tasks]
+  );
+
+  // SortableContext に渡す items も毎回 map しないようメモ化
+  const sortableItems = useMemo(() => tasks.map((t) => t.id), [tasks]);
+
+  const handleClosePanel = useCallback(() => setSelectedTask(null), []);
 
   return (
     <DndContext
@@ -91,7 +106,7 @@ export function SugorokuGrid({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <SortableContext items={tasks.map((t) => t.id)} strategy={rectSortingStrategy}>
+      <SortableContext items={sortableItems} strategy={rectSortingStrategy}>
         <div>
           <div className="space-y-2">
             {rows.map((row, rowIdx) => {
@@ -105,7 +120,7 @@ export function SugorokuGrid({
                     style={{ gridTemplateColumns: `repeat(${COLS}, 1fr)` }}
                   >
                     {displayRow.map((task) => {
-                      const originalIndex = tasks.findIndex((t) => t.id === task.id);
+                      const originalIndex = originalIndexMap.get(task.id) ?? 0;
                       return (
                         <TaskCell
                           key={task.id}
@@ -159,7 +174,7 @@ export function SugorokuGrid({
         <TaskDetailPanel
           task={selectedTask}
           allTasks={allTasks}
-          onClose={() => setSelectedTask(null)}
+          onClose={handleClosePanel}
           onTaskUpdated={onTaskUpdated}
         />
       )}

@@ -1,3 +1,4 @@
+import { memo, useMemo } from "react";
 import type { Member } from "@/lib/supabase/types";
 
 interface MemberTabsProps {
@@ -7,19 +8,25 @@ interface MemberTabsProps {
   onSelect: (memberId: string) => void;
 }
 
-export function MemberTabs({
+export const MemberTabs = memo(function MemberTabs({
   members,
   selectedMemberId,
   roadmaps,
   onSelect,
 }: MemberTabsProps) {
+  // O(members × roadmaps) の繰り返し find を O(1) Map ルックアップに変換
+  const roadmapMap = useMemo(
+    () => new Map(roadmaps.map((r) => [r.member_id, r])),
+    [roadmaps]
+  );
+
   return (
     <div
       className="flex gap-2 mb-6 overflow-x-auto pb-1"
       style={{ scrollbarWidth: "thin" }}
     >
       {members.map((m) => {
-        const memberRoadmap = roadmaps.find((r) => r.member_id === m.id);
+        const memberRoadmap = roadmapMap.get(m.id);
         const memberTasks = memberRoadmap?.tasks ?? [];
         const memberDone = memberTasks.filter((t) => t.status === "done").length;
         const memberPct =
@@ -68,4 +75,4 @@ export function MemberTabs({
       })}
     </div>
   );
-}
+});

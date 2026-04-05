@@ -28,21 +28,13 @@ export default function Navbar({ member }: NavbarProps) {
         .eq("status", "pending")
         .then(({ count }) => setPendingCount(count ?? 0));
     } else {
-      // メンバー: 自分のロードマップの「要修正」タスク数を取得
+      // メンバー: roadmaps を inner join して1クエリで「要修正」タスク数を取得
       supabase
-        .from("roadmaps")
-        .select("id")
-        .eq("member_id", member.id)
-        .single()
-        .then(({ data: roadmap }) => {
-          if (!roadmap) return;
-          supabase
-            .from("tasks")
-            .select("id", { count: "exact", head: true })
-            .eq("roadmap_id", roadmap.id)
-            .eq("status", "needs_revision")
-            .then(({ count }) => setRevisionCount(count ?? 0));
-        });
+        .from("tasks")
+        .select("roadmaps!inner(member_id)", { count: "exact", head: true })
+        .eq("roadmaps.member_id", member.id)
+        .eq("status", "needs_revision")
+        .then(({ count }) => setRevisionCount(count ?? 0));
     }
   }, [member]);
 

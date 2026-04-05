@@ -186,15 +186,20 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [onClose, commentSubTask]);
 
-  // 全サブタスクのコメント件数を一括取得
-  useEffect(() => {
-    const allChildIds = allTasks
-      .filter(
-        (t) =>
-          t.parent_id === task.id ||
-          allTasks.some((m) => m.parent_id === task.id && m.id === t.parent_id)
-      )
+  // 全サブタスク ID を O(n) で算出（O(n²) の some → Set に変換）
+  const allChildIds = useMemo(() => {
+    const mediumIds = new Set(
+      allTasks.filter((t) => t.parent_id === task.id).map((t) => t.id)
+    );
+    return allTasks
+      .filter((t) => t.parent_id === task.id || mediumIds.has(t.parent_id!))
       .map((t) => t.id);
+  }, [allTasks, task.id]);
+
+  // 全サブタスクのコメント件数を一括取得
+  // allChildIds ではなく task.id のみを deps にすることで、
+  // allTasks 参照変更（ボードの他タスク更新）ごとに再フェッチするのを防ぐ
+  useEffect(() => {
     if (allChildIds.length === 0) return;
     supabase
       .from("comments")
@@ -207,7 +212,9 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
         });
         setCommentCounts(counts);
       });
-  }, [task.id, allTasks]);
+    // allChildIds は意図的に除外: タスクが変わったときのみ再フェッチする
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [task.id, supabase]);
 
   const largeColors = STATUS_COLORS[largeStatus];
 

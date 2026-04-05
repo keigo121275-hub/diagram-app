@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Member, Task } from "@/lib/supabase/types";
@@ -55,24 +55,58 @@ export default function SugorokuBoard({
 
   const activeMemberId = isAdmin ? selectedMemberId : (currentMember?.id ?? "");
 
-  // Supabase Realtime: アクティブなロードマップのタスク変更を購読
+  // roadmap を早めに計算し、ref でキャプチャして Realtime effect の deps を最小化
+  const roadmap = roadmaps.find((r) => r.member_id === activeMemberId);
+  const activeRoadmapIdRef = useRef<string | undefined>(roadmap?.id);
+  const roadmapTasksFallbackRef = useRef<Task[]>(roadmap?.tasks ?? []);
+  // render ごとに ref を最新値へ更新（副作用なし）
+  activeRoadmapIdRef.current = roadmap?.id;
+  roadmapTasksFallbackRef.current = roadmap?.tasks ?? [];
+
+  // Supabase Realtime: activeMemberId が変わったときだけ再購読。
+  // roadmaps を deps に含めないことで router.refresh() 後の購読チャーンを防ぐ。
   useEffect(() => {
-    const activeRoadmap = roadmaps.find((r) => r.member_id === activeMemberId);
-    if (!activeRoadmap) return;
+    const roadmapId = activeRoadmapIdRef.current;
+    if (!roadmapId) return;
 
     const supabase = createClient();
     const channel = supabase
-      .channel(`tasks:roadmap:${activeRoadmap.id}`)
+      .channel(`tasks:roadmap:${roadmapId}`)
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
           table: "tasks",
-          filter: `roadmap_id=eq.${activeRoadmap.id}`,
+          filter: `roadmap_id=eq.${roadmapId}`,
         },
-        () => {
-          router.refresh();
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            setLocalTasksMap((prev) => {
+              const current = prev[activeMemberId] ?? roadmapTasksFallbackRef.current;
+              return { ...prev, [activeMemberId]: [...current, payload.new as Task] };
+            });
+          } else if (payload.eventType === "UPDATE") {
+            setLocalTasksMap((prev) => {
+              const current = prev[activeMemberId] ?? roadmapTasksFallbackRef.current;
+              return {
+                ...prev,
+                [activeMemberId]: current.map((t) =>
+                  t.id === (payload.new as Task).id ? (payload.new as Task) : t
+                ),
+              };
+            });
+          } else if (payload.eventType === "DELETE") {
+            setLocalTasksMap((prev) => {
+              const current = prev[activeMemberId] ?? roadmapTasksFallbackRef.current;
+              return {
+                ...prev,
+                [activeMemberId]: current.filter(
+                  (t) => t.id !== (payload.old as { id: string }).id
+                ),
+              };
+            });
+          }
         }
       )
       .subscribe();
@@ -80,67 +114,96 @@ export default function SugorokuBoard({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [activeMemberId, roadmaps, router]);
-  const activeMember = isAdmin
-    ? (allMembers.find((m) => m.id === activeMemberId) ?? currentMember)
-    : currentMember;
+    // roadmaps は ref 経由でアクセスするため deps に含めない
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeMemberId]);
 
-  const roadmap = roadmaps.find((r) => r.member_id === activeMemberId);
-  const rawTasks = localTasksMap[activeMemberId] ?? roadmap?.tasks ?? [];
-  const allTasks = sortTasks(rawTasks);
-  const tasks = allTasks.filter((t) => t.parent_id === null);
-  const doneCount = tasks.filter((t) => t.status === "done").length;
+  const activeMember = useMemo(
+    () =>
+      isAdmin
+        ? (allMembers.find((m) => m.id === activeMemberId) ?? currentMember)
+        : currentMember,
+    [isAdmin, allMembers, activeMemberId, currentMember]
+  );
 
-  const handleDeleteTask = async (taskId: string) => {
-    if (!confirm("このタスクを削除しますか？")) return;
-    setDeletingTaskId(taskId);
-    const supabase = createClient();
-    await supabase.from("tasks").delete().eq("id", taskId);
-    setDeletingTaskId(null);
-    router.refresh();
-  };
+  // メモ化した派生値
+  const rawTasks = useMemo(
+    () => localTasksMap[activeMemberId] ?? roadmap?.tasks ?? [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [localTasksMap, activeMemberId, roadmap?.id]
+  );
+  const allTasks = useMemo(() => sortTasks(rawTasks), [rawTasks]);
+  const tasks = useMemo(() => allTasks.filter((t) => t.parent_id === null), [allTasks]);
+  const doneCount = useMemo(() => tasks.filter((t) => t.status === "done").length, [tasks]);
 
-  const handleDeleteAllTasks = async () => {
-    if (!roadmap) return;
+  // rawTasks を ref でキャプチャして handleReorder の deps を最小化
+  const rawTasksRef = useRef<Task[]>(rawTasks);
+  rawTasksRef.current = rawTasks;
+
+  const handleDeleteTask = useCallback(
+    async (taskId: string) => {
+      if (!confirm("このタスクを削除しますか？")) return;
+      setDeletingTaskId(taskId);
+      const supabase = createClient();
+      await supabase.from("tasks").delete().eq("id", taskId);
+      setDeletingTaskId(null);
+      router.refresh();
+    },
+    [router]
+  );
+
+  const handleDeleteAllTasks = useCallback(async () => {
+    const roadmapId = activeRoadmapIdRef.current;
+    if (!roadmapId) return;
     setDeletingAll(true);
     setConfirmDeleteAll(false);
     const supabase = createClient();
-    await supabase.from("roadmaps").delete().eq("id", roadmap.id);
+    await supabase.from("roadmaps").delete().eq("id", roadmapId);
     setDeletingAll(false);
     router.refresh();
-  };
+  }, [router]);
 
   // ドラッグ並べ替え後のハンドラ
-  const handleReorder = async (newRootTasks: Task[]) => {
-    if (!roadmap) return;
+  const handleReorder = useCallback(
+    async (newRootTasks: Task[]) => {
+      if (!activeRoadmapIdRef.current) return;
 
-    // order フィールドを新しい位置に更新してからローカル state に反映
-    const reorderedRootTasks = newRootTasks.map((t, i) => ({ ...t, order: i + 1 }));
-    const otherTasks = rawTasks.filter((t) => t.parent_id !== null);
-    const updatedAllTasks = [...reorderedRootTasks, ...otherTasks];
-    setLocalTasksMap((prev) => ({ ...prev, [activeMemberId]: updatedAllTasks }));
+      // order フィールドを新しい位置に更新してからローカル state に反映
+      const reorderedRootTasks = newRootTasks.map((t, i) => ({ ...t, order: i + 1 }));
+      const otherTasks = rawTasksRef.current.filter((t) => t.parent_id !== null);
+      const updatedAllTasks = [...reorderedRootTasks, ...otherTasks];
+      setLocalTasksMap((prev) => ({ ...prev, [activeMemberId]: updatedAllTasks }));
 
-    // DB に order を一括更新（router.refresh は不要 - 楽観的 UI で管理）
-    const supabase = createClient();
-    await Promise.all(
-      reorderedRootTasks.map((t) =>
-        supabase.from("tasks").update({ order: t.order }).eq("id", t.id)
-      )
-    );
-  };
+      // DB に order を一括更新（router.refresh は不要 - 楽観的 UI で管理）
+      const supabase = createClient();
+      await Promise.all(
+        reorderedRootTasks.map((t) =>
+          supabase.from("tasks").update({ order: t.order }).eq("id", t.id)
+        )
+      );
+    },
+    [activeMemberId]
+  );
 
   /** メンバータブ切り替え：URL を更新してリロード時も同じ位置を保持 */
-  const handleSelectMember = (memberId: string) => {
-    setSelectedMemberId(memberId);
-    router.push(`?member=${memberId}`, { scroll: false });
-  };
-  const handleTaskUpdated = (id: string, patch: Partial<Task>) => {
-    setLocalTasksMap((prev) => {
-      const current = prev[activeMemberId] ?? roadmap?.tasks ?? [];
-      const updated = current.map((t) => (t.id === id ? { ...t, ...patch } : t));
-      return { ...prev, [activeMemberId]: updated };
-    });
-  };
+  const handleSelectMember = useCallback(
+    (memberId: string) => {
+      setSelectedMemberId(memberId);
+      router.push(`?member=${memberId}`, { scroll: false });
+    },
+    [router]
+  );
+
+  const handleTaskUpdated = useCallback(
+    (id: string, patch: Partial<Task>) => {
+      setLocalTasksMap((prev) => {
+        const current = prev[activeMemberId] ?? roadmapTasksFallbackRef.current;
+        const updated = current.map((t) => (t.id === id ? { ...t, ...patch } : t));
+        return { ...prev, [activeMemberId]: updated };
+      });
+    },
+    [activeMemberId]
+  );
 
   if (roadmaps.length === 0 && !isAdmin) {
     return (

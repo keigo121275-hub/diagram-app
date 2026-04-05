@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Member, Task } from "@/lib/supabase/types";
@@ -14,7 +15,7 @@ interface TaskCellProps {
   onDelete: (taskId: string) => void;
 }
 
-export function TaskCell({
+export const TaskCell = memo(function TaskCell({
   task,
   isCurrentPosition,
   memberForToken,
@@ -159,4 +160,4 @@ export function TaskCell({
       </div>
     </div>
   );
-}
+});
