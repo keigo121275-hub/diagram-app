@@ -673,6 +673,7 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
               ) : (
                 /* 中タスクリスト（DnD） */
                 <DndContext
+                  id={`task-panel-medium-${task.id}`}
                   sensors={sensors}
                   collisionDetection={closestCenter}
                   onDragEnd={handleMediumDragEnd}
@@ -828,6 +829,7 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
                                 {isExpanded && (
                                   <div className="ml-6 mt-1.5">
                                     <DndContext
+                                      id={`task-panel-small-${medium.id}`}
                                       sensors={sensors}
                                       collisionDetection={closestCenter}
                                       onDragEnd={(e) => handleSmallDragEnd(medium.id, e)}

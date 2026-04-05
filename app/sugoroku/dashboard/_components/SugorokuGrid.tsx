@@ -144,6 +144,7 @@ export function SugorokuGrid({
   return (
     <>
       <DndContext
+        id="sugoroku-grid"
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragStart={handleDragStart}
