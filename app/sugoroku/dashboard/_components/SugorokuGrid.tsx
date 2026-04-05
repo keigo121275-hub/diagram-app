@@ -141,12 +141,6 @@ export function SugorokuGrid({
 
   const totalCells = tasks.length;
 
-  // 行コネクターの向き判定（蛇行グリッド用）
-  function getRowConnectorDir(rowIdx: number) {
-    // 偶数行→右端から下、奇数行→左端から下
-    return rowIdx % 2 === 0 ? "right" : "left";
-  }
-
   return (
     <>
       <DndContext
@@ -159,9 +153,7 @@ export function SugorokuGrid({
           <div ref={gridRef}>
             <div className="space-y-0">
               {rows.map((row, rowIdx) => {
-                const isEvenRow = rowIdx % 2 === 0;
-                const displayRow = isEvenRow ? row : [...row].reverse();
-                const connDir = getRowConnectorDir(rowIdx);
+                const displayRow = row;
                 const isLastRow = rowIdx === rows.length - 1;
 
                 return (
@@ -194,12 +186,8 @@ export function SugorokuGrid({
                     {/* 行コネクター（最終行以外） */}
                     {!isLastRow && (
                       <div
-                        className="relative flex items-center py-1"
-                        style={{
-                          justifyContent: connDir === "right" ? "flex-end" : "flex-start",
-                          paddingRight: connDir === "right" ? "calc(10% - 8px)" : undefined,
-                          paddingLeft: connDir === "left" ? "calc(10% - 8px)" : undefined,
-                        }}
+                        className="relative flex items-center justify-end py-1"
+                        style={{ paddingRight: "calc(10% - 8px)" }}
                       >
                         <div
                           className="flex flex-col items-center gap-0.5"
