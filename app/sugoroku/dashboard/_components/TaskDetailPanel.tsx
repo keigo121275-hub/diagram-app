@@ -72,6 +72,20 @@ function SortableRow({
   );
 }
 
+// URL を含むテキストを自動でリンク化する
+function renderWithLinks(text: string): React.ReactNode[] {
+  return text.split(/(https?:\/\/\S+)/g).map((part, i) =>
+    /^https?:\/\//.test(part) ? (
+      <a key={i} href={part} target="_blank" rel="noopener noreferrer"
+        style={{ color: "#60a5fa", textDecoration: "underline", wordBreak: "break-all" }}>
+        {part}
+      </a>
+    ) : (
+      <span key={i}>{part}</span>
+    )
+  );
+}
+
 export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated }: TaskDetailPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const supabase = useMemo(() => createClient(), []);
@@ -92,6 +106,15 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
         .filter((t) => t.parent_id === mid)
         .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     }
+    return map;
+  });
+
+  // 中・小タスクのメモ一時値（onBlur で保存）
+  const [memoValues, setMemoValues] = useState<Record<string, string>>(() => {
+    const map: Record<string, string> = {};
+    allTasks.forEach((t) => {
+      if (t.parent_id !== null) map[t.id] = t.description ?? "";
+    });
     return map;
   });
 
@@ -259,6 +282,11 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
       .update({ description: taskDescription || null })
       .eq("id", task.id);
     setSavingDescription(false);
+  };
+
+  const saveMemo = async (taskId: string) => {
+    const value = memoValues[taskId] ?? "";
+    await supabase.from("tasks").update({ description: value || null }).eq("id", taskId);
   };
 
   const updateDueDate = async (value: string) => {
@@ -825,6 +853,44 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
                                   </div>
                                 </div>
 
+                                {/* 中タスクのメモ・リンク欄 */}
+                                {isExpanded && (
+                                  <div
+                                    className="mx-1 mt-2 rounded-lg p-2.5"
+                                    style={{ background: "#141622", border: "1px solid rgba(108,99,255,0.2)" }}
+                                  >
+                                    <div className="text-xs font-bold mb-1.5" style={{ color: "#6c63ff" }}>
+                                      📝 メモ・リンク
+                                    </div>
+                                    {/* 表示モード（入力なし時） */}
+                                    {!memoValues[medium.id] ? (
+                                      <textarea
+                                        value={memoValues[medium.id] ?? ""}
+                                        onChange={(e) => setMemoValues((prev) => ({ ...prev, [medium.id]: e.target.value }))}
+                                        onBlur={() => saveMemo(medium.id)}
+                                        placeholder="メモや参考URLを入力..."
+                                        rows={2}
+                                        className="w-full text-xs outline-none resize-none"
+                                        style={{ background: "transparent", color: "#94a3b8", border: "none" }}
+                                      />
+                                    ) : (
+                                      <div>
+                                        <div className="text-xs leading-relaxed" style={{ color: "#cbd5e1", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+                                          {renderWithLinks(memoValues[medium.id])}
+                                        </div>
+                                        <textarea
+                                          value={memoValues[medium.id]}
+                                          onChange={(e) => setMemoValues((prev) => ({ ...prev, [medium.id]: e.target.value }))}
+                                          onBlur={() => saveMemo(medium.id)}
+                                          rows={2}
+                                          className="w-full text-xs outline-none resize-none mt-1.5"
+                                          style={{ background: "#0f1117", border: "1px solid #2e3347", borderRadius: "6px", padding: "6px 8px", color: "#cbd5e1" }}
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+
                                 {/* 小タスク一覧（展開時） */}
                                 {isExpanded && (
                                   <div className="ml-6 mt-1.5">
@@ -966,11 +1032,35 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
                                                         >
                                                           🗑
                                                         </button>
-                                                      </div>
                                                     </div>
                                                   </div>
-                                                )}
-                                              </SortableRow>
+
+                                                  {/* 小タスクのメモ・リンク欄 */}
+                                                  <div
+                                                    className="mt-2 rounded-md p-2"
+                                                    style={{ background: "#0f1117", border: "1px dashed rgba(108,99,255,0.2)" }}
+                                                  >
+                                                    <div style={{ fontSize: "10px", color: "#6c63ff", fontWeight: 700, marginBottom: "4px" }}>
+                                                      📝 メモ・リンク
+                                                    </div>
+                                                    {memoValues[small.id] && (
+                                                      <div style={{ fontSize: "11px", color: "#94a3b8", whiteSpace: "pre-wrap", wordBreak: "break-all", marginBottom: "4px", lineHeight: 1.6 }}>
+                                                        {renderWithLinks(memoValues[small.id])}
+                                                      </div>
+                                                    )}
+                                                    <textarea
+                                                      value={memoValues[small.id] ?? ""}
+                                                      onChange={(e) => setMemoValues((prev) => ({ ...prev, [small.id]: e.target.value }))}
+                                                      onBlur={() => saveMemo(small.id)}
+                                                      placeholder="メモや参考URLを入力..."
+                                                      rows={1}
+                                                      className="w-full outline-none resize-none"
+                                                      style={{ background: "transparent", border: "none", color: "#6b7280", fontSize: "11px" }}
+                                                    />
+                                                  </div>
+                                                </div>
+                                              )}
+                                            </SortableRow>
                                             );
                                           })}
                                         </div>

@@ -90,7 +90,7 @@ export const TaskCell = memo(function TaskCell({
       ref={setNodeRef}
       style={{
         ...style,
-        minHeight: "92px",
+        minHeight: "140px",
         background: isDone ? "rgba(5,46,22,0.85)" : colors.bg,
         border: `1px solid ${isDone ? "rgba(74,222,128,0.35)" : colors.border}`,
         boxShadow: isCurrentPosition
@@ -104,7 +104,7 @@ export const TaskCell = memo(function TaskCell({
         cursor: isDraggable ? "grab" : "pointer",
         touchAction: isDraggable ? "none" : undefined,
       }}
-      className="relative rounded-xl p-3 transition-all duration-200 select-none"
+      className="relative rounded-xl p-4 transition-all duration-200 select-none"
       data-cell-index={cellIndex}
       onClick={() => !isDragging && onClick(task)}
       {...(isDraggable ? { ...attributes, ...listeners } : {})}
@@ -199,7 +199,7 @@ export const TaskCell = memo(function TaskCell({
         style={{ paddingRight: isAdmin ? "4px" : "36px", position: "relative", zIndex: 3 }}
       >
         <p
-          className="text-xs font-medium leading-snug"
+          className="text-sm font-medium leading-snug"
           style={{ color: isDone ? "#86efac" : "#e2e8f0" }}
         >
           {task.title}

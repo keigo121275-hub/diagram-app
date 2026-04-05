@@ -31,7 +31,7 @@ interface SugorokuGridProps {
   onTaskUpdated: (id: string, patch: Partial<Task>) => void;
 }
 
-const COLS = 5;
+const COLS = 3;
 
 // ── コマホップアニメーション用 ────────────────────────────────────────
 interface HopState {
