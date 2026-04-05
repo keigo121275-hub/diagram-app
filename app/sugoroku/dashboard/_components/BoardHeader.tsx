@@ -69,7 +69,7 @@ export function BoardHeader({
                 color: "#f87171",
               }}
             >
-              {deletingAll ? "削除中..." : "🗑️ 全タスク削除"}
+              {deletingAll ? "リセット中..." : "🗑️ マップをリセット"}
             </button>
           )}
           {isAdmin && (
@@ -81,7 +81,7 @@ export function BoardHeader({
                 color: "#fff",
               }}
             >
-              ✨ 新規生成
+              ✨ マップを作る
             </a>
           )}
         </div>
@@ -98,7 +98,7 @@ export function BoardHeader({
             >
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium mb-1.5" style={{ color: "#6c63ff" }}>
-                  🎯 ロードマップの目標
+                  🗺️ ステージミッション
                 </p>
                 <p className="text-base font-semibold leading-relaxed" style={{ color: "#e2e8f0" }}>
                   {goal}
@@ -125,7 +125,7 @@ export function BoardHeader({
               style={{ background: "#1a1d27", border: "1px solid rgba(108,99,255,0.4)" }}
             >
               <p className="text-xs font-medium mb-2" style={{ color: "#6c63ff" }}>
-                🎯 ロードマップの目標を設定する
+                🗺️ ミッションを設定する
               </p>
               <textarea
                 value={draft}
@@ -133,7 +133,7 @@ export function BoardHeader({
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleConfirm();
                 }}
-                placeholder="例）3ヶ月以内に一人で架電〜クロージングまで完結できる営業担当者になる"
+                placeholder="例）3ヶ月後にはひとりで冒険できる一人前の旅人になる"
                 rows={2}
                 autoFocus
                 className="w-full text-sm outline-none resize-none mb-3"
@@ -158,7 +158,7 @@ export function BoardHeader({
                     color: draft.trim() ? "#fff" : "#4a5568",
                   }}
                 >
-                  {saving ? "保存中..." : "決定"}
+                  {saving ? "保存中..." : "設定する"}
                 </button>
               </div>
             </div>

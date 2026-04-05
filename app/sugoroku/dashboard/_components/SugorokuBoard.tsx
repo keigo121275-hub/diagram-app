@@ -142,7 +142,7 @@ export default function SugorokuBoard({
 
   const handleDeleteTask = useCallback(
     async (taskId: string) => {
-      if (!confirm("このタスクを削除しますか？")) return;
+      if (!confirm("このマスを削除しますか？")) return;
       setDeletingTaskId(taskId);
       const supabase = createClient();
       await supabase.from("tasks").delete().eq("id", taskId);
@@ -208,10 +208,10 @@ export default function SugorokuBoard({
   if (roadmaps.length === 0 && !isAdmin) {
     return (
       <div className="text-center py-24">
-        <div className="text-4xl mb-4">🗺️</div>
-        <p style={{ color: "#94a3b8" }}>ロードマップがまだ作成されていません</p>
+        <div className="text-4xl mb-4">🎲</div>
+        <p style={{ color: "#94a3b8" }}>まだマップが作成されていません</p>
         <p className="text-sm mt-2" style={{ color: "#4a5568" }}>
-          管理者にロードマップの作成を依頼してください
+          管理者にマップの作成を依頼してください
         </p>
       </div>
     );
@@ -249,11 +249,11 @@ export default function SugorokuBoard({
       {!roadmap ? (
         <div
           className="rounded-2xl p-12 text-center"
-          style={{ background: "#1a1d27", border: "1px dashed #2e3347" }}
+          style={{ background: "#1a1d27", border: "1px dashed rgba(108,99,255,0.4)" }}
         >
-          <div className="text-4xl mb-4">🗺️</div>
+          <div className="text-4xl mb-4">🎲</div>
           <p style={{ color: "#94a3b8" }}>
-            ロードマップがまだ作成されていません
+            まだマップが作成されていません
           </p>
           {isAdmin && (
             <a
@@ -264,7 +264,7 @@ export default function SugorokuBoard({
                 color: "#fff",
               }}
             >
-              ✨ ロードマップを生成する
+              ✨ マップを生成する
             </a>
           )}
         </div>
@@ -274,6 +274,7 @@ export default function SugorokuBoard({
           style={{
             background: "#1a1d27",
             border: "1px solid #2e3347",
+            boxShadow: "0 0 0 1px rgba(108,99,255,0.08), 0 4px 24px rgba(108,99,255,0.06)",
             opacity: deletingTaskId ? 0.7 : 1,
           }}
         >
@@ -291,7 +292,7 @@ export default function SugorokuBoard({
           ) : (
             <div className="text-center py-12">
               <p style={{ color: "#94a3b8" }}>
-                タスクがまだ追加されていません
+                マスがまだ追加されていません
               </p>
             </div>
           )}
@@ -319,7 +320,7 @@ export default function SugorokuBoard({
             boxShadow: "0 8px 24px rgba(108,99,255,0.4)",
           }}
         >
-          📝 日報を書く
+          📖 冒険を記録する
         </button>
       )}
     </div>
