@@ -344,14 +344,20 @@ export default React.memo(function SubTaskList({
                 const isExpanded = expandedMediumIds.has(medium.id);
                 const commentCount = commentCounts[medium.id] ?? 0;
 
+                const smallDoneCount = smallTasks.filter((s) => s.status === "done").length;
+
                 return (
                   <SortableRow key={medium.id} id={medium.id}>
                     {({ isDragging, handleProps }) => (
                       <div style={{ opacity: isDragging ? 0.5 : 1 }}>
                         {/* 中タスク行 */}
                         <div
-                          className="rounded-lg p-3"
-                          style={{ background: "#1a1d27", border: `1px solid ${mediumColors.border}` }}
+                          className="rounded-lg p-3 group"
+                          style={{
+                            background: "#1a1d27",
+                            border: `1px solid ${mediumColors.border}`,
+                            borderLeft: `3px solid ${mediumColors.border}`,
+                          }}
                         >
                           <div className="flex items-start gap-1.5">
                             <span
@@ -382,12 +388,12 @@ export default React.memo(function SubTaskList({
                                     if (e.key === "Escape") setEditingMediumId(null);
                                   }}
                                   autoFocus
-                                  className="w-full px-2 py-0.5 rounded text-xs outline-none"
+                                  className="w-full px-2 py-0.5 rounded text-sm outline-none"
                                   style={{ background: "#232636", border: "1px solid #6c63ff44", color: "#e2e8f0" }}
                                 />
                               ) : (
                                 <p
-                                  className="text-xs font-medium leading-snug cursor-pointer"
+                                  className="text-sm font-medium leading-snug cursor-pointer"
                                   style={{ color: "#e2e8f0" }}
                                   title="クリックして編集"
                                   onClick={() => {
@@ -398,6 +404,12 @@ export default React.memo(function SubTaskList({
                                   <span style={{ color: "#6c63ff", marginRight: 4 }}>{mediumIdx + 1}.</span>
                                   {medium.title}
                                 </p>
+                              )}
+                              {/* 小タスク達成カウント */}
+                              {smallTasks.length > 0 && (
+                                <span className="text-xs mt-0.5 inline-block" style={{ color: smallDoneCount === smallTasks.length ? "#4ade80" : "#4a5568" }}>
+                                  {smallDoneCount}/{smallTasks.length} 完了
+                                </span>
                               )}
                             </div>
                             <div className="flex items-center gap-1 shrink-0">
@@ -439,8 +451,8 @@ export default React.memo(function SubTaskList({
                               </select>
                               <button
                                 onClick={() => deleteMediumTask(medium.id)}
-                                className="w-5 h-5 rounded flex items-center justify-center"
-                                style={{ background: "transparent", color: "#3a4055", fontSize: 11 }}
+                                className="w-5 h-5 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                style={{ background: "transparent", color: "#64748b", fontSize: 11 }}
                                 title="削除"
                               >
                                 🗑
@@ -449,18 +461,12 @@ export default React.memo(function SubTaskList({
                           </div>
                         </div>
 
-                        {/* 中タスクのメモ・リンク欄 */}
-                        {isExpanded && (
-                          <MemoLinkField
-                            value={memoValues[medium.id] ?? ""}
-                            onChange={(v) => setMemoValues((prev) => ({ ...prev, [medium.id]: v }))}
-                            onBlur={() => saveMemo(medium.id)}
-                          />
-                        )}
-
                         {/* 小タスク一覧（展開時） */}
                         {isExpanded && (
-                          <div className="ml-6 mt-1.5">
+                          <div
+                            className="ml-4 mt-1.5 pl-3"
+                            style={{ borderLeft: "1px solid #2e3347" }}
+                          >
                             <DndContext
                               id={`task-panel-small-${medium.id}`}
                               sensors={sensors}
@@ -479,7 +485,7 @@ export default React.memo(function SubTaskList({
                                       <SortableRow key={small.id} id={small.id}>
                                         {({ isDragging: isDraggingSmall, handleProps: smallHandleProps }) => (
                                           <div
-                                            className="rounded-lg p-2.5"
+                                            className="rounded-lg p-2.5 group"
                                             style={{
                                               background: "#141622",
                                               border: `1px solid ${smallColors.border}`,
@@ -567,8 +573,8 @@ export default React.memo(function SubTaskList({
                                                 </select>
                                                 <button
                                                   onClick={() => deleteSmallTask(medium.id, small.id)}
-                                                  className="w-5 h-5 rounded flex items-center justify-center"
-                                                  style={{ background: "transparent", color: "#3a4055", fontSize: 10 }}
+                                                  className="w-5 h-5 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                                  style={{ background: "transparent", color: "#64748b", fontSize: 10 }}
                                                   title="削除"
                                                 >
                                                   🗑
