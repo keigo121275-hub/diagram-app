@@ -1,5 +1,33 @@
 import type { Task } from "@/lib/supabase/types";
 
+// ── 称号システム（EXPゲージの5段階ランク）──────────────────────────────
+export const RANK_TIERS = [
+  { min: 0,   icon: "🌱", title: "見習い冒険者",  color: "#94a3b8" },
+  { min: 25,  icon: "🗺️", title: "一人前の旅人",  color: "#60a5fa" },
+  { min: 50,  icon: "⚔️", title: "熟練の探索者", color: "#a78bfa" },
+  { min: 75,  icon: "🌟", title: "歴戦の勇者",   color: "#facc15" },
+  { min: 100, icon: "👑", title: "伝説の英雄",    color: "#4ade80" },
+] as const;
+
+export type RankTier = (typeof RANK_TIERS)[number];
+
+export function getRank(pct: number): RankTier {
+  let rank: RankTier = RANK_TIERS[0];
+  for (const tier of RANK_TIERS) {
+    if (pct >= tier.min) rank = tier;
+  }
+  return rank;
+}
+
+// ── クエストカード用ステータスラベル（TaskDetailPanel 専用）──────────────
+export const QUEST_STATUS_LABELS: Record<Task["status"], string> = {
+  todo:             "📋 受注待ち",
+  in_progress:      "⚔️ 挑戦中",
+  pending_approval: "✨ 審判待ち",
+  done:             "🏆 達成",
+  needs_revision:   "🔄 再挑戦",
+};
+
 export const STATUS_LABELS: Record<Task["status"], string> = {
   todo: "未着手",
   in_progress: "進行中",

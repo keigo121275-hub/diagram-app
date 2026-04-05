@@ -11,9 +11,46 @@ interface TaskCellProps {
   memberForToken: Pick<Member, "name" | "avatar_url"> | null;
   onClick: (task: Task) => void;
   cellIndex: number;
+  totalCells: number;
   isAdmin: boolean;
   onDelete: (taskId: string) => void;
 }
+
+/** セルの種類を判定 */
+function getCellType(
+  cellIndex: number,
+  totalCells: number
+): "start" | "goal" | "checkpoint" | "normal" {
+  if (cellIndex === 0) return "start";
+  if (cellIndex === totalCells - 1) return "goal";
+  if ((cellIndex + 1) % 5 === 0) return "checkpoint";
+  return "normal";
+}
+
+const CELL_TYPE_STYLES = {
+  start: {
+    badge: "🏁 START",
+    badgeColor: "#4ade80",
+    badgeBg: "rgba(74,222,128,0.15)",
+    badgeBorder: "rgba(74,222,128,0.35)",
+    glowColor: "rgba(74,222,128,0.25)",
+  },
+  goal: {
+    badge: "🏆 GOAL",
+    badgeColor: "#facc15",
+    badgeBg: "rgba(250,204,21,0.15)",
+    badgeBorder: "rgba(250,204,21,0.35)",
+    glowColor: "rgba(250,204,21,0.25)",
+  },
+  checkpoint: {
+    badge: "⭐ CP",
+    badgeColor: "#a78bfa",
+    badgeBg: "rgba(167,139,250,0.15)",
+    badgeBorder: "rgba(167,139,250,0.35)",
+    glowColor: "rgba(167,139,250,0.2)",
+  },
+  normal: null,
+};
 
 export const TaskCell = memo(function TaskCell({
   task,
@@ -21,10 +58,14 @@ export const TaskCell = memo(function TaskCell({
   memberForToken,
   onClick,
   cellIndex,
+  totalCells,
   isAdmin,
   onDelete,
 }: TaskCellProps) {
   const isDraggable = task.status === "todo";
+  const isDone = task.status === "done";
+  const cellType = getCellType(cellIndex, totalCells);
+  const typeStyle = CELL_TYPE_STYLES[cellType];
 
   const {
     attributes,
@@ -58,10 +99,12 @@ export const TaskCell = memo(function TaskCell({
       style={{
         ...style,
         minHeight: "92px",
-        background: colors.bg,
-        border: `1px solid ${colors.border}`,
+        background: isDone ? "rgba(5,46,22,0.85)" : colors.bg,
+        border: `1px solid ${isDone ? "rgba(74,222,128,0.35)" : colors.border}`,
         boxShadow: isCurrentPosition
-          ? "0 0 0 3px rgba(108,99,255,.25)"
+          ? "0 0 0 3px rgba(108,99,255,.3), 0 0 16px rgba(108,99,255,.2)"
+          : typeStyle?.glowColor
+          ? `0 0 0 1.5px ${typeStyle.glowColor}`
           : isDragging
           ? "0 0 0 2px #6c63ff, 0 8px 24px rgba(108,99,255,0.4)"
           : undefined,
@@ -70,13 +113,54 @@ export const TaskCell = memo(function TaskCell({
         touchAction: isDraggable ? "none" : undefined,
       }}
       className="relative rounded-xl p-3 transition-all duration-200 select-none"
+      data-cell-index={cellIndex}
       onClick={() => !isDragging && onClick(task)}
       {...(isDraggable ? { ...attributes, ...listeners } : {})}
     >
+      {/* セル種別バッジ (START / GOAL / CP) */}
+      {typeStyle && (
+        <div
+          className="absolute top-0 inset-x-0 mx-2 -translate-y-3 flex justify-center"
+          style={{ zIndex: 2 }}
+        >
+          <span
+            className="px-2 py-0.5 rounded-full text-xs font-extrabold"
+            style={{
+              background: typeStyle.badgeBg,
+              color: typeStyle.badgeColor,
+              border: `1px solid ${typeStyle.badgeBorder}`,
+              letterSpacing: "0.06em",
+            }}
+          >
+            {typeStyle.badge}
+          </span>
+        </div>
+      )}
+
+      {/* 完了スタンプ */}
+      {isDone && (
+        <div
+          className="absolute inset-0 flex items-center justify-center pointer-events-none rounded-xl"
+          style={{ zIndex: 1, background: "rgba(5,46,22,0.25)" }}
+        >
+          <span
+            style={{
+              fontSize: "44px",
+              opacity: 0.18,
+              transform: "rotate(-22deg)",
+              lineHeight: 1,
+              userSelect: "none",
+            }}
+          >
+            ✅
+          </span>
+        </div>
+      )}
+
       {/* セル番号 */}
       <div
         className="absolute top-2 left-2 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold"
-        style={{ background: "#0f1117", color: "#94a3b8" }}
+        style={{ background: "#0f1117", color: "#94a3b8", zIndex: 3 }}
       >
         {cellIndex + 1}
       </div>
@@ -85,7 +169,7 @@ export const TaskCell = memo(function TaskCell({
       {isDraggable && (
         <div
           className="absolute top-2 left-8 flex gap-0.5 items-center"
-          style={{ color: "#4a5568" }}
+          style={{ color: "#4a5568", zIndex: 3 }}
         >
           <span style={{ fontSize: "10px", lineHeight: 1 }}>⠿</span>
         </div>
@@ -99,6 +183,7 @@ export const TaskCell = memo(function TaskCell({
             background: "rgba(248,113,113,0.15)",
             color: "#f87171",
             border: "1px solid rgba(248,113,113,0.3)",
+            zIndex: 4,
           }}
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => {
@@ -111,7 +196,7 @@ export const TaskCell = memo(function TaskCell({
         </button>
       )}
 
-      {/* 駒（adminでないときのみ右上に表示） */}
+      {/* 駒（admin でないとき右上に表示） */}
       {isCurrentPosition && memberForToken && !isAdmin && (
         <PlayerToken member={memberForToken} />
       )}
@@ -119,30 +204,30 @@ export const TaskCell = memo(function TaskCell({
       {/* タイトル */}
       <div
         className="mt-5"
-        style={{ paddingRight: isAdmin ? "4px" : "36px" }}
+        style={{ paddingRight: isAdmin ? "4px" : "36px", position: "relative", zIndex: 3 }}
       >
         <p
           className="text-xs font-medium leading-snug"
-          style={{ color: "#e2e8f0" }}
+          style={{ color: isDone ? "#86efac" : "#e2e8f0" }}
         >
           {task.title}
         </p>
       </div>
 
       {/* フッター: ステータスバッジ + 日付 */}
-      <div className="mt-2 flex items-center justify-between gap-1">
+      <div className="mt-2 flex items-center justify-between gap-1" style={{ position: "relative", zIndex: 3 }}>
         <span
           className="inline-block px-2 py-0.5 rounded text-xs font-medium"
           style={{
             background: "rgba(0,0,0,0.3)",
-            color: colors.text,
+            color: isDone ? "#4ade80" : colors.text,
             animation:
               task.status === "pending_approval"
                 ? "blink 1.5s ease-in-out infinite"
                 : undefined,
           }}
         >
-          {STATUS_LABELS[task.status]}
+          {isDone ? "🏆 達成" : STATUS_LABELS[task.status]}
         </span>
 
         {formattedDueDate && (

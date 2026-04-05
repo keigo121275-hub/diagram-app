@@ -577,6 +577,231 @@
     margin-top: 16px;
   }
   .crop-hint-icon { font-size: 20px; flex-shrink: 0; }
+
+  /* ══════════════════════════════════════
+     ⑥ GAME UI — NEW DESIGN
+  ══════════════════════════════════════ */
+
+  /* Level Up Toast */
+  .levelup-toast {
+    position: fixed; top: -140px; left: 50%; transform: translateX(-50%);
+    z-index: 9999; min-width: 300px; text-align: center; pointer-events: none;
+    background: linear-gradient(135deg, #1e1a3a 0%, #2d2660 100%);
+    border: 1.5px solid #6c63ff; border-radius: 20px; padding: 18px 28px;
+    box-shadow: 0 8px 40px rgba(108,99,255,.55), 0 0 0 1px rgba(108,99,255,.2);
+    transition: top .45s cubic-bezier(.175,.885,.32,1.275);
+  }
+  .levelup-toast.show { top: 72px; }
+  .toast-up-label { font-size: 11px; font-weight: 700; color: #a5b4fc; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 6px; }
+  .toast-rank-text { font-size: 20px; font-weight: 800; color: #e2e8f0; }
+
+  /* EXP Section */
+  .exp-section { display: flex; align-items: center; gap: 20px; padding: 16px 20px; margin-bottom: 16px; }
+  .rank-display-col { display: flex; align-items: center; gap: 10px; min-width: 190px; flex-shrink: 0; }
+  .rank-icon-lg { font-size: 30px; }
+  .rank-label-sm { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; }
+  .rank-title-lg { font-size: 15px; font-weight: 800; color: var(--text); }
+  .exp-bar-col { flex: 1; }
+  .exp-markers-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
+  .exp-marker-pip { font-size: 13px; text-align: center; line-height: 1; }
+  .exp-marker-pip span { font-size: 9px; color: var(--text-muted); display: block; margin-top: 1px; }
+  .exp-track {
+    height: 14px; background: var(--surface2); border-radius: 999px;
+    position: relative; overflow: hidden;
+  }
+  .exp-fill {
+    height: 100%; border-radius: 999px; position: relative;
+    background: linear-gradient(90deg, #6c63ff 0%, #a78bfa 55%, #4ade80 100%);
+    box-shadow: 0 0 14px rgba(108,99,255,.55);
+    transition: width 1s ease;
+  }
+  .exp-fill::after {
+    content: ''; position: absolute; right: -1px; top: 50%; transform: translateY(-50%);
+    width: 7px; height: 7px; border-radius: 50%; background: #fff;
+    box-shadow: 0 0 8px #6c63ff;
+  }
+  .exp-tick { position: absolute; top: 0; bottom: 0; width: 2px; background: rgba(255,255,255,.12); transform: translateX(-50%); }
+  .exp-pct-col { min-width: 52px; text-align: right; flex-shrink: 0; }
+  .exp-pct-big { font-size: 26px; font-weight: 800; color: var(--accent2); line-height: 1; }
+  .exp-task-sm { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+  /* Demo Controls */
+  .demo-controls-bar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .dctrl-btn {
+    padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight: 700;
+    cursor: pointer; border: 1.5px solid var(--accent);
+    background: rgba(108,99,255,.1); color: var(--accent);
+    transition: all .15s;
+  }
+  .dctrl-btn:hover { background: rgba(108,99,255,.25); transform: translateY(-1px); }
+  .dctrl-btn-green { border-color: var(--accent2); color: var(--accent2); background: rgba(74,222,128,.1); }
+  .dctrl-btn-green:hover { background: rgba(74,222,128,.25); }
+
+  /* Game Board */
+  .game-board-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; position: relative; }
+  .game-board-lbl { font-size: 13px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .game-row { display: grid; grid-template-columns: repeat(5,1fr); gap: 8px; }
+
+  /* Game Cells */
+  .gcell {
+    background: var(--surface2); border: 1.5px solid var(--border);
+    border-radius: 10px; padding: 10px; min-height: 96px;
+    position: relative; cursor: pointer; transition: all .2s; overflow: hidden;
+  }
+  .gcell:hover:not(.gcell-done):not(.gcell-goal) { border-color: var(--accent); }
+  .gcell-num { font-size: 10px; font-weight: 800; color: var(--text-muted); margin-bottom: 2px; }
+  .gcell-title { font-size: 11px; font-weight: 600; line-height: 1.4; margin-top: 18px; color: var(--text); padding-right: 4px; }
+  .gcell-badge {
+    position: absolute; top: 6px; right: 6px;
+    font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 4px;
+    text-transform: uppercase; letter-spacing: .03em;
+  }
+  .gcell-status { position: absolute; bottom: 7px; left: 8px; font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px; }
+  .gs-done { background: #14532d; color: #4ade80; }
+  .gs-pend { background: #422006; color: #facc15; }
+  .gs-todo { background: #1f2937; color: #6b7280; }
+  .gs-inprog { background: #1e3a5f; color: #60a5fa; }
+
+  /* START */
+  .gcell-start { border-color: #16a34a !important; background: linear-gradient(160deg,#052e16,#0b3320); }
+  .gcell-start .gcell-badge { background: #16a34a; color: #fff; }
+  /* GOAL */
+  .gcell-goal { border-color: #ca8a04 !important; background: linear-gradient(160deg,#1c1200,#2b1d00); animation: goalGlow 3s ease-in-out infinite; }
+  @keyframes goalGlow {
+    0%,100% { box-shadow: 0 0 0 2px rgba(202,138,4,.2), 0 0 18px rgba(202,138,4,.1); }
+    50% { box-shadow: 0 0 0 3px rgba(202,138,4,.45), 0 0 30px rgba(202,138,4,.25); }
+  }
+  .gcell-goal .gcell-badge { background: #ca8a04; color: #fff; }
+  /* CHECKPOINT */
+  .gcell-cp { border-color: rgba(108,99,255,.45) !important; }
+  .gcell-cp::before { content: '⭐'; position: absolute; top: 5px; right: 6px; font-size: 12px; }
+  /* DONE */
+  .gcell-done { border-color: #166534; background: #052e16; }
+  .gcell-done .gcell-num { color: #4ade80; }
+  .done-stamp {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 46px; font-weight: 900; color: rgba(74,222,128,.13);
+    pointer-events: none; user-select: none;
+  }
+  /* ACTIVE */
+  .gcell-active { border-color: var(--accent) !important; box-shadow: 0 0 0 3px rgba(108,99,255,.25); }
+  /* PENDING */
+  .gcell-pend { border-color: #92400e !important; background: #2a1f00; animation: pendGlow 1.8s ease-in-out infinite; }
+  @keyframes pendGlow {
+    0%,100% { box-shadow: 0 0 8px rgba(250,204,21,.1); }
+    50% { box-shadow: 0 0 0 3px rgba(250,204,21,.3), 0 0 20px rgba(250,204,21,.2); }
+  }
+
+  /* Player Token */
+  .game-token {
+    position: absolute; top: 7px; right: 7px;
+    width: 30px; height: 30px; border-radius: 50%; overflow: hidden;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 2px #6c63ff, 0 0 16px rgba(108,99,255,.6);
+    animation: float 2.5s ease-in-out infinite;
+    z-index: 5; font-size: 18px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface2);
+  }
+  /* Floating token overlay for hop animation */
+  .hop-token {
+    position: fixed; width: 30px; height: 30px; border-radius: 50%;
+    overflow: hidden; border: 2px solid #fff;
+    box-shadow: 0 0 0 2px #6c63ff, 0 0 18px rgba(108,99,255,.7);
+    z-index: 9998; font-size: 18px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface2); pointer-events: none;
+    transition: left .28s ease, top .28s ease;
+  }
+  @keyframes hopBounce {
+    0% { transform: scale(1) translateY(0); }
+    35% { transform: scale(1.3) translateY(-16px); }
+    65% { transform: scale(.9) translateY(3px); }
+    100% { transform: scale(1) translateY(0); }
+  }
+
+  /* Path Connectors */
+  .path-conn { height: 26px; position: relative; display: flex; align-items: center; margin: 2px 0; }
+  .path-conn-r { justify-content: flex-end; padding-right: 20px; }
+  .path-conn-l { justify-content: flex-start; padding-left: 20px; }
+  .path-dashes {
+    height: 2px; width: 45%;
+    background: repeating-linear-gradient(90deg, rgba(108,99,255,.45) 0, rgba(108,99,255,.45) 5px, transparent 5px, transparent 10px);
+    border-radius: 1px;
+  }
+  .path-arrow-txt { font-size: 15px; color: rgba(108,99,255,.55); margin: 0 4px; }
+
+  /* Quest Side Panel */
+  .quest-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 500; }
+  .quest-overlay.open { display: block; }
+  .quest-panel {
+    position: fixed; top: 0; right: 0; width: 400px; height: 100vh;
+    background: var(--surface); border-left: 1px solid var(--border);
+    z-index: 501; overflow-y: auto;
+    transform: translateX(100%); transition: transform .28s ease;
+  }
+  .quest-panel.open { transform: translateX(0); }
+  .quest-panel-hd {
+    background: linear-gradient(135deg, #13102a 0%, #1c1840 100%);
+    border-bottom: 1px solid rgba(108,99,255,.3);
+    padding: 20px 20px 16px; position: relative;
+  }
+  .qp-close {
+    position: absolute; top: 14px; right: 14px;
+    background: rgba(255,255,255,.08); border: none; color: var(--text-muted);
+    width: 30px; height: 30px; border-radius: 8px; cursor: pointer; font-size: 14px;
+    display: flex; align-items: center; justify-content: center; transition: all .15s;
+  }
+  .qp-close:hover { color: var(--text); background: rgba(255,255,255,.15); }
+  .qp-label { font-size: 11px; font-weight: 700; color: #a5b4fc; text-transform: uppercase; letter-spacing: .1em; margin-bottom: 8px; }
+  .qp-title { font-size: 19px; font-weight: 800; color: var(--text); margin-bottom: 12px; line-height: 1.3; }
+  .qp-status-row { display: flex; gap: 8px; align-items: center; }
+  .qp-stag {
+    font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 8px;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .qst-pend { background: rgba(250,204,21,.15); color: #facc15; border: 1px solid rgba(250,204,21,.3); }
+  .qst-done { background: rgba(74,222,128,.15); color: #4ade80; border: 1px solid rgba(74,222,128,.3); }
+  .qst-revision { background: rgba(248,113,113,.12); color: #f87171; border: 1px solid rgba(248,113,113,.3); }
+  .quest-panel-body { padding: 20px; }
+  .btn-quest-submit {
+    width: 100%; padding: 13px; border-radius: 12px; border: none;
+    background: linear-gradient(135deg, #6c63ff, #5b52ee); color: #fff;
+    font-size: 15px; font-weight: 800; cursor: pointer;
+    box-shadow: 0 4px 20px rgba(108,99,255,.35);
+    transition: all .2s; margin-bottom: 20px;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn-quest-submit:hover { opacity: .9; transform: translateY(-1px); box-shadow: 0 6px 28px rgba(108,99,255,.48); }
+  .qp-section-lbl {
+    font-size: 11px; font-weight: 700; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: .06em;
+    margin-top: 20px; margin-bottom: 10px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .qp-subquest {
+    display: flex; align-items: center; gap: 10px; padding: 9px 12px;
+    background: var(--surface2); border-radius: 8px; font-size: 13px;
+    margin-bottom: 6px; transition: background .15s;
+  }
+  .qp-subquest:hover { background: #2b2e42; }
+  .qp-chk-done { color: #4ade80; font-size: 15px; flex-shrink: 0; }
+  .qp-chk-todo { color: #374151; font-size: 15px; flex-shrink: 0; }
+  .qp-revision-box {
+    background: rgba(248,113,113,.1); border: 1px solid rgba(248,113,113,.3);
+    border-radius: 10px; padding: 12px 14px; margin-bottom: 16px;
+    font-size: 13px; color: #f87171; line-height: 1.6;
+    display: flex; gap: 8px; align-items: flex-start;
+  }
+  .qp-comment-item { display: flex; gap: 10px; padding: 10px 12px; background: var(--surface2); border-radius: 8px; font-size: 13px; margin-bottom: 6px; line-height: 1.5; }
+  .qp-comment-meta { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+  .qp-comment-input-row { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
+  .qp-comment-input {
+    flex: 1; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 12px; color: var(--text); font-size: 13px; outline: none;
+  }
+  .qp-comment-input:focus { border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -589,6 +814,7 @@
   <button class="demo-btn" onclick="showScreen('admin-dashboard')">③ 管理者ダッシュボード</button>
   <button class="demo-btn" onclick="showScreen('admin-approval')">④ 承認リスト</button>
   <button class="demo-btn highlight" onclick="showScreen('profile')">⑤ 🆕 プロフィール写真設定</button>
+  <button class="demo-btn" onclick="showScreen('game-ui')" style="border-color:#4ade80;color:#4ade80">⑥ ✨ ゲームUI（新）</button>
 </div>
 
 
@@ -1163,7 +1389,307 @@
 </div>
 
 
-<!-- ===== SIDE PANEL (Task Detail) ===== -->
+<!-- ===== ⑥ GAME UI NEW DESIGN ===== -->
+<div id="screen-game-ui" class="screen">
+  <nav>
+    <div class="nav-logo"><span class="icon">🎲</span> すごろくロードマップ</div>
+    <div class="nav-tabs">
+      <button class="nav-tab active">ボード</button>
+    </div>
+    <div class="nav-actions">
+      <div class="nav-avatar-wrap">
+        <div class="nav-avatar" style="font-size:19px">👨‍💻</div>
+        <div class="nav-avatar-overlay">📷</div>
+        <div class="nav-avatar-tooltip">写真を変更する</div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Level Up Toast -->
+  <div class="levelup-toast" id="levelup-toast">
+    <div class="toast-up-label">⬆️ 称号アップ！</div>
+    <div class="toast-rank-text" id="toast-rank-text">🌟 歴戦の勇者 になりました</div>
+  </div>
+
+  <div class="page-body">
+    <p class="demo-note-green">✨ 新デザインプレビュー — アイデア 1〜4 の実装イメージ</p>
+
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px">
+      <div class="page-title">田中 健一 の冒険ロードマップ</div>
+    </div>
+    <p class="page-subtitle">目標：2026年度 Webエンジニア育成プログラム完走</p>
+
+    <!-- ── アイデア3: EXP ゲージ + 称号バッジ ── -->
+    <div class="card exp-section" id="exp-section">
+      <div class="rank-display-col">
+        <div class="rank-icon-lg" id="rank-icon-display">⚔️</div>
+        <div>
+          <div class="rank-label-sm">現在の称号</div>
+          <div class="rank-title-lg" id="rank-title-display">熟練の探索者</div>
+        </div>
+      </div>
+      <div class="exp-bar-col">
+        <div class="exp-markers-row">
+          <div class="exp-marker-pip">🌱<span>0%</span></div>
+          <div class="exp-marker-pip">🗺️<span>25%</span></div>
+          <div class="exp-marker-pip">⚔️<span>50%</span></div>
+          <div class="exp-marker-pip">🌟<span>75%</span></div>
+          <div class="exp-marker-pip">👑<span>100%</span></div>
+        </div>
+        <div class="exp-track">
+          <div class="exp-fill" id="exp-fill" style="width:60%"></div>
+          <div class="exp-tick" style="left:25%"></div>
+          <div class="exp-tick" style="left:50%"></div>
+          <div class="exp-tick" style="left:75%"></div>
+        </div>
+      </div>
+      <div class="exp-pct-col">
+        <div class="exp-pct-big" id="exp-pct-display">60%</div>
+        <div class="exp-task-sm">12/20 タスク</div>
+      </div>
+    </div>
+
+    <!-- デモ操作ボタン -->
+    <div class="demo-controls-bar">
+      <button class="dctrl-btn" onclick="demoLevelUp()">⬆️ 称号アップを体験</button>
+      <button class="dctrl-btn dctrl-btn-green" onclick="demoHopToken()">🎲 コマをホップ移動</button>
+      <button class="dctrl-btn" style="border-color:#94a3b8;color:#94a3b8" onclick="demoReset()">↺ リセット</button>
+    </div>
+
+    <!-- ── アイデア2+1: マップ風ボード + コマホップ ── -->
+    <div class="game-board-wrap">
+      <div class="game-board-lbl">🗺 冒険のロードマップ</div>
+      <div id="game-board">
+
+        <!-- ROW 1: 01→05 (L to R) -->
+        <div class="game-row" id="grow-1">
+
+          <div class="gcell gcell-done gcell-start" data-gcell="1" onclick="openQuestPanel('env')">
+            <div class="gcell-num">01</div>
+            <span class="gcell-badge" style="background:#16a34a;color:#fff">🏠 START</span>
+            <div class="gcell-title">開発環境セットアップ</div>
+            <div class="done-stamp">✓</div>
+            <div class="gcell-status gs-done">✔ 達成</div>
+          </div>
+
+          <div class="gcell gcell-done" data-gcell="2" onclick="openQuestPanel('git')">
+            <div class="gcell-num">02</div>
+            <div class="gcell-title">Git 基礎</div>
+            <div class="done-stamp">✓</div>
+            <div class="gcell-status gs-done">✔ 達成</div>
+          </div>
+
+          <div class="gcell gcell-done" data-gcell="3" onclick="openQuestPanel('html')">
+            <div class="gcell-num">03</div>
+            <div class="gcell-title">HTML/CSS 基礎</div>
+            <div class="done-stamp">✓</div>
+            <div class="gcell-status gs-done">✔ 達成</div>
+          </div>
+
+          <div class="gcell gcell-done" data-gcell="4" onclick="openQuestPanel('js')">
+            <div class="gcell-num">04</div>
+            <div class="gcell-title">JavaScript 入門</div>
+            <div class="done-stamp">✓</div>
+            <div class="gcell-status gs-done">✔ 達成</div>
+          </div>
+
+          <div class="gcell gcell-done gcell-cp" data-gcell="5" onclick="openQuestPanel('react')">
+            <div class="gcell-num">05</div>
+            <div class="gcell-title">React 基礎コンポーネント</div>
+            <div class="done-stamp">✓</div>
+            <div class="gcell-status gs-done">✔ 達成</div>
+          </div>
+        </div>
+
+        <!-- Path connector: right side -->
+        <div class="path-conn path-conn-r">
+          <div class="path-dashes"></div>
+          <div class="path-arrow-txt">↓</div>
+        </div>
+
+        <!-- ROW 2: 10→06 (R to L) -->
+        <div class="game-row" id="grow-2">
+
+          <div class="gcell gcell-done gcell-cp" data-gcell="10" onclick="openQuestPanel('ts')">
+            <div class="gcell-num">10</div>
+            <div class="gcell-title">TypeScript 基礎</div>
+            <div class="done-stamp">✓</div>
+            <div class="gcell-status gs-done">✔ 達成</div>
+          </div>
+
+          <div class="gcell gcell-done" data-gcell="9" onclick="openQuestPanel('state')">
+            <div class="gcell-num">09</div>
+            <div class="gcell-title">状態管理 (Zustand)</div>
+            <div class="done-stamp">✓</div>
+            <div class="gcell-status gs-done">✔ 達成</div>
+          </div>
+
+          <div class="gcell gcell-done" data-gcell="8" onclick="openQuestPanel('api')">
+            <div class="gcell-num">08</div>
+            <div class="gcell-title">REST API 連携</div>
+            <div class="done-stamp">✓</div>
+            <div class="gcell-status gs-done">✔ 達成</div>
+          </div>
+
+          <div class="gcell gcell-done" data-gcell="7" onclick="openQuestPanel('next')">
+            <div class="gcell-num">07</div>
+            <div class="gcell-title">Next.js 基礎</div>
+            <div class="done-stamp">✓</div>
+            <div class="gcell-status gs-done">✔ 達成</div>
+          </div>
+
+          <div class="gcell gcell-done" data-gcell="6" onclick="openQuestPanel('tailwind')">
+            <div class="gcell-num">06</div>
+            <div class="gcell-title">Tailwind CSS</div>
+            <div class="done-stamp">✓</div>
+            <div class="gcell-status gs-done">✔ 達成</div>
+          </div>
+        </div>
+
+        <!-- Path connector: left side -->
+        <div class="path-conn path-conn-l">
+          <div class="path-arrow-txt">↓</div>
+          <div class="path-dashes"></div>
+        </div>
+
+        <!-- ROW 3: 11→15 (L to R) -->
+        <div class="game-row" id="grow-3">
+
+          <div class="gcell gcell-done" data-gcell="11" onclick="openQuestPanel('db')">
+            <div class="gcell-num">11</div>
+            <div class="gcell-title">DB 設計基礎</div>
+            <div class="done-stamp">✓</div>
+            <div class="gcell-status gs-done">✔ 達成</div>
+          </div>
+
+          <div class="gcell gcell-done" data-gcell="12" onclick="openQuestPanel('supa')">
+            <div class="gcell-num">12</div>
+            <div class="gcell-title">Supabase Auth</div>
+            <div class="done-stamp">✓</div>
+            <div class="gcell-status gs-done">✔ 達成</div>
+          </div>
+
+          <div class="gcell gcell-active gcell-pend" id="gcell-13" data-gcell="13" onclick="openQuestPanel('rls')">
+            <div class="gcell-num">13</div>
+            <div class="gcell-title">Row Level Security</div>
+            <div class="game-token" id="game-token">👨‍💻</div>
+            <div class="gcell-status gs-pend">✨ 審判待ち</div>
+          </div>
+
+          <div class="gcell" id="gcell-14" data-gcell="14" onclick="openQuestPanel('rt')">
+            <div class="gcell-num">14</div>
+            <div class="gcell-title">Realtime 購読</div>
+            <div class="gcell-status gs-todo">📋 受注待ち</div>
+          </div>
+
+          <div class="gcell gcell-cp" id="gcell-15" data-gcell="15" onclick="openQuestPanel('storage')">
+            <div class="gcell-num">15</div>
+            <div class="gcell-title">Storage アップロード</div>
+            <div class="gcell-status gs-todo">📋 受注待ち</div>
+          </div>
+        </div>
+
+        <!-- Path connector: right side -->
+        <div class="path-conn path-conn-r">
+          <div class="path-dashes"></div>
+          <div class="path-arrow-txt">↓</div>
+        </div>
+
+        <!-- ROW 4: 20→16 (R to L) -->
+        <div class="game-row" id="grow-4">
+
+          <div class="gcell gcell-goal" data-gcell="20" onclick="openQuestPanel('deploy')">
+            <div class="gcell-num">20</div>
+            <span class="gcell-badge" style="background:#ca8a04;color:#fff">🏆 GOAL</span>
+            <div class="gcell-title">Vercel 本番デプロイ</div>
+            <div class="gcell-status gs-todo">📋 受注待ち</div>
+          </div>
+
+          <div class="gcell" data-gcell="19" onclick="openQuestPanel('perf')">
+            <div class="gcell-num">19</div>
+            <div class="gcell-title">パフォーマンス最適化</div>
+            <div class="gcell-status gs-todo">📋 受注待ち</div>
+          </div>
+
+          <div class="gcell" data-gcell="18" onclick="openQuestPanel('e2e')">
+            <div class="gcell-num">18</div>
+            <div class="gcell-title">E2E テスト</div>
+            <div class="gcell-status gs-todo">📋 受注待ち</div>
+          </div>
+
+          <div class="gcell" data-gcell="17" onclick="openQuestPanel('cicd')">
+            <div class="gcell-num">17</div>
+            <div class="gcell-title">CI / CD 設定</div>
+            <div class="gcell-status gs-inprog">⚔️ 挑戦中</div>
+          </div>
+
+          <div class="gcell" data-gcell="16" onclick="openQuestPanel('test')">
+            <div class="gcell-num">16</div>
+            <div class="gcell-title">単体テスト (Vitest)</div>
+            <div class="gcell-status gs-inprog">⚔️ 挑戦中</div>
+          </div>
+        </div>
+
+      </div><!-- /game-board -->
+    </div><!-- /game-board-wrap -->
+  </div>
+</div>
+
+<!-- ── アイデア4: クエストパネル ── -->
+<div class="quest-overlay" id="quest-overlay" onclick="closeQuestPanel()"></div>
+<div class="quest-panel" id="quest-panel">
+  <div class="quest-panel-hd">
+    <button class="qp-close" onclick="closeQuestPanel()">✕</button>
+    <div class="qp-label">📜 クエスト詳細</div>
+    <div class="qp-title" id="qp-title">Row Level Security の実装</div>
+    <div class="qp-status-row">
+      <span class="qp-stag qst-pend" id="qp-status-tag">✨ 審判待ち</span>
+      <span class="chip chip-large">大クエスト</span>
+    </div>
+  </div>
+  <div class="quest-panel-body">
+    <div id="qp-revision-box" class="qp-revision-box" style="display:none">
+      🔄 <div><strong>このクエストは差し戻されました</strong><br>tasks テーブルの RLS も忘れずに対応してください。</div>
+    </div>
+
+    <button class="btn-quest-submit" id="qp-submit-btn">✨ このクエストを完了申請する</button>
+
+    <div class="qp-section-lbl">🗡️ サブクエスト</div>
+    <div class="qp-subquest"><span class="qp-chk-done">✔</span> RLS ポリシーの設計</div>
+    <div class="qp-subquest"><span class="qp-chk-done">✔</span> members テーブルへの適用</div>
+    <div class="qp-subquest"><span class="qp-chk-todo">□</span> tasks テーブルへの適用</div>
+    <div class="qp-subquest"><span class="qp-chk-todo">□</span> 動作確認・ユニットテスト</div>
+
+    <div class="qp-section-lbl">📅 クエスト期限</div>
+    <div style="font-size:13px;color:var(--text-muted);padding:6px 0">2026 / 04 / 15</div>
+
+    <div class="qp-section-lbl">💬 冒険の記録 / コメント</div>
+    <div class="qp-comment-item">
+      <div class="photo-avatar" style="width:28px;height:28px;font-size:16px;background:var(--surface2);border:1.5px solid var(--border);flex-shrink:0">🧑‍💼</div>
+      <div>
+        tasks テーブルの RLS は admin が全件参照できるポリシーを忘れずに！
+        <div class="qp-comment-meta">佐藤 管理者 · 04/02 10:14</div>
+      </div>
+    </div>
+    <div class="qp-comment-item">
+      <div class="photo-avatar" style="width:28px;height:28px;font-size:16px;background:var(--surface2);border:1.5px solid #6c63ff;flex-shrink:0">👨‍💻</div>
+      <div>
+        ありがとうございます。確認しました！
+        <div class="qp-comment-meta">田中 健一 · 04/02 10:32</div>
+      </div>
+    </div>
+    <div class="qp-comment-input-row">
+      <div class="photo-avatar" style="width:28px;height:28px;font-size:16px;background:var(--surface2);border:1.5px solid #6c63ff;flex-shrink:0">👨‍💻</div>
+      <input class="qp-comment-input" placeholder="冒険の記録を残す…">
+      <button class="btn-sm btn-accent">送信</button>
+    </div>
+
+    <div class="qp-section-lbl">📝 成果物・報告</div>
+    <div style="font-size:13px;color:var(--text-muted);padding:4px 0 8px">(クエスト達成後に記入)</div>
+  </div>
+</div>
+
+
 <div class="panel-overlay" id="overlay" onclick="closePanel()"></div>
 <div class="side-panel" id="side-panel">
   <button class="panel-close" onclick="closePanel()">✕</button>
@@ -1216,8 +1742,9 @@
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('.demo-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('screen-' + name).classList.add('active');
-    const map = { 'login':0, 'member-board':1, 'admin-dashboard':2, 'admin-approval':3, 'profile':4 };
-    document.querySelectorAll('.demo-btn')[map[name]].classList.add('active');
+    const map = { 'login':0, 'member-board':1, 'admin-dashboard':2, 'admin-approval':3, 'profile':4, 'game-ui':5 };
+    const idx = map[name];
+    if (idx !== undefined) document.querySelectorAll('.demo-btn')[idx].classList.add('active');
     closePanel();
   }
 
@@ -1347,6 +1874,218 @@
 
   function rejectTask(btn) {
     document.getElementById('reject-panel').style.display = 'block';
+  }
+
+  /* ══════════════════════════════════════
+     ⑥ GAME UI — JS
+  ══════════════════════════════════════ */
+
+  // Rank tiers
+  const RANKS = [
+    { min: 0,   icon: '🌱', title: '見習い冒険者' },
+    { min: 25,  icon: '🗺️', title: '一人前の旅人' },
+    { min: 50,  icon: '⚔️', title: '熟練の探索者' },
+    { min: 75,  icon: '🌟', title: '歴戦の勇者' },
+    { min: 100, icon: '👑', title: '伝説の英雄' },
+  ];
+  function getRank(pct) {
+    let r = RANKS[0];
+    for (const t of RANKS) { if (pct >= t.min) r = t; }
+    return r;
+  }
+  function updateExpUI(pct, tasks, totalTasks) {
+    const rank = getRank(pct);
+    document.getElementById('exp-fill').style.width = pct + '%';
+    document.getElementById('exp-pct-display').textContent = pct + '%';
+    document.getElementById('rank-icon-display').textContent = rank.icon;
+    document.getElementById('rank-title-display').textContent = rank.title;
+    document.querySelector('.exp-task-sm').textContent = tasks + '/' + totalTasks + ' タスク';
+  }
+
+  let currentExpPct = 60;
+  let currentExpDone = 12;
+  const totalTasks = 20;
+
+  function demoLevelUp() {
+    const prevRank = getRank(currentExpPct);
+    currentExpPct = Math.min(currentExpPct + 15, 100);
+    currentExpDone = Math.round(currentExpPct / 100 * totalTasks);
+    const newRank = getRank(currentExpPct);
+    updateExpUI(currentExpPct, currentExpDone, totalTasks);
+    if (prevRank.title !== newRank.title) {
+      showLevelUpToast(newRank.icon, newRank.title);
+    }
+    if (currentExpPct >= 100) currentExpPct = 0;
+  }
+
+  function showLevelUpToast(icon, title) {
+    const toast = document.getElementById('levelup-toast');
+    document.getElementById('toast-rank-text').textContent = icon + ' ' + title + ' になりました';
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3200);
+  }
+
+  // Token hop animation
+  let tokenCellNum = 13;
+  let hopInProgress = false;
+
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  async function demoHopToken() {
+    if (hopInProgress) return;
+    const target = tokenCellNum >= 15 ? 13 : tokenCellNum + 1;
+    if (target === tokenCellNum) return;
+    await hopTokenTo(tokenCellNum, target);
+    tokenCellNum = target;
+    // If token reached cell 14, mark cell 13 as done and 14 as active
+    if (target === 14) {
+      const c13 = document.getElementById('gcell-13');
+      c13.classList.remove('gcell-active','gcell-pend');
+      c13.classList.add('gcell-done');
+      c13.innerHTML = '<div class="gcell-num" style="color:#4ade80">13</div>' +
+        '<div class="gcell-title">Row Level Security</div>' +
+        '<div class="done-stamp">✓</div>' +
+        '<div class="gcell-status gs-done">🏆 達成</div>';
+      const c14 = document.getElementById('gcell-14');
+      c14.classList.add('gcell-active');
+      c14.querySelector('.gcell-status').textContent = '⚔️ 挑戦中';
+      c14.querySelector('.gcell-status').className = 'gcell-status gs-inprog';
+      // Update EXP
+      const prevRank = getRank(currentExpPct);
+      currentExpDone = Math.min(currentExpDone + 1, totalTasks);
+      currentExpPct = Math.round(currentExpDone / totalTasks * 100);
+      const newRank = getRank(currentExpPct);
+      updateExpUI(currentExpPct, currentExpDone, totalTasks);
+      if (prevRank.title !== newRank.title) {
+        showLevelUpToast(newRank.icon, newRank.title);
+      }
+    } else if (target === 15) {
+      const c14 = document.getElementById('gcell-14');
+      c14.classList.remove('gcell-active');
+      c14.classList.add('gcell-done');
+      c14.innerHTML = '<div class="gcell-num" style="color:#4ade80">14</div>' +
+        '<div class="gcell-title">Realtime 購読</div>' +
+        '<div class="done-stamp">✓</div>' +
+        '<div class="gcell-status gs-done">🏆 達成</div>';
+      const c15 = document.getElementById('gcell-15');
+      c15.classList.add('gcell-active');
+    }
+  }
+
+  async function hopTokenTo(fromNum, toNum) {
+    hopInProgress = true;
+    const fromCell = document.querySelector('[data-gcell="' + fromNum + '"]');
+    const toCell = document.querySelector('[data-gcell="' + toNum + '"]');
+    if (!fromCell || !toCell) { hopInProgress = false; return; }
+
+    const fromRect = fromCell.getBoundingClientRect();
+    const toRect = toCell.getBoundingClientRect();
+
+    // Spawn floating token at from-position
+    const ft = document.createElement('div');
+    ft.className = 'hop-token';
+    ft.textContent = '👨‍💻';
+    ft.style.left = (fromRect.right - 37) + 'px';
+    ft.style.top  = (fromRect.top + 7) + 'px';
+    document.body.appendChild(ft);
+
+    // Hide static token during animation
+    const staticToken = document.getElementById('game-token');
+    if (staticToken) staticToken.style.opacity = '0';
+
+    // Bounce up then move across
+    await sleep(30);
+    ft.style.transition = 'left .3s ease, top .3s ease, transform .3s ease';
+    ft.style.transform = 'translateY(-18px) scale(1.25)';
+    await sleep(200);
+    ft.style.top = (toRect.top + 7) + 'px';
+    ft.style.left = (toRect.right - 37) + 'px';
+    ft.style.transform = 'translateY(0) scale(1)';
+    await sleep(320);
+
+    // Move static token to destination and restore
+    if (staticToken) {
+      fromCell.removeChild(staticToken);
+      toCell.insertBefore(staticToken, toCell.firstChild);
+      staticToken.style.opacity = '1';
+    }
+    ft.remove();
+    hopInProgress = false;
+  }
+
+  function demoReset() {
+    // Reset EXP
+    currentExpPct = 60;
+    currentExpDone = 12;
+    tokenCellNum = 13;
+    updateExpUI(60, 12, 20);
+
+    // Reset cells
+    const c13 = document.getElementById('gcell-13');
+    const c14 = document.getElementById('gcell-14');
+    const c15 = document.getElementById('gcell-15');
+    c13.className = 'gcell gcell-active gcell-pend';
+    c13.innerHTML = '<div class="gcell-num">13</div>' +
+      '<div class="gcell-title">Row Level Security</div>' +
+      '<div class="game-token" id="game-token">👨‍💻</div>' +
+      '<div class="gcell-status gs-pend">✨ 審判待ち</div>';
+    c14.className = 'gcell';
+    c14.innerHTML = '<div class="gcell-num">14</div>' +
+      '<div class="gcell-title">Realtime 購読</div>' +
+      '<div class="gcell-status gs-todo">📋 受注待ち</div>';
+    c15.className = 'gcell gcell-cp';
+    // re-add cp pseudo marker text
+  }
+
+  // Quest panel
+  const QUEST_TITLES = {
+    env: '開発環境セットアップ', git: 'Git 基礎', html: 'HTML/CSS 基礎',
+    js: 'JavaScript 入門', react: 'React 基礎コンポーネント', ts: 'TypeScript 基礎',
+    state: '状態管理 (Zustand)', api: 'REST API 連携', next: 'Next.js 基礎ルーティング',
+    tailwind: 'Tailwind CSS', db: 'DB 設計基礎', supa: 'Supabase Auth',
+    rls: 'Row Level Security の実装', rt: 'Realtime サブスクライブ',
+    storage: 'Storage 画像アップロード', test: '単体テスト (Vitest)',
+    cicd: 'CI / CD 設定', e2e: 'E2E テスト (Playwright)',
+    perf: 'パフォーマンス最適化', deploy: 'Vercel 本番デプロイ',
+  };
+  const DONE_CELLS = new Set([1,2,3,4,5,6,7,8,9,10,11,12]);
+
+  function openQuestPanel(key) {
+    const title = QUEST_TITLES[key] || 'クエスト詳細';
+    document.getElementById('qp-title').textContent = title;
+    // Determine status tag
+    const cellMap = { rls: 13, rt: 14, storage: 15 };
+    const num = cellMap[key];
+    const statusTag = document.getElementById('qp-status-tag');
+    const submitBtn = document.getElementById('qp-submit-btn');
+    const revBox = document.getElementById('qp-revision-box');
+    revBox.style.display = 'none';
+    if (num && DONE_CELLS.has(num)) {
+      statusTag.className = 'qp-stag qst-done'; statusTag.textContent = '🏆 達成';
+      submitBtn.style.display = 'none';
+    } else if (key === 'rls') {
+      statusTag.className = 'qp-stag qst-pend'; statusTag.textContent = '✨ 審判待ち';
+      submitBtn.style.display = 'flex'; submitBtn.textContent = '✨ このクエストを完了申請する';
+    } else if (['cicd','test'].includes(key)) {
+      statusTag.className = 'qp-stag qst-done' ; statusTag.textContent = '⚔️ 挑戦中';
+      statusTag.className = 'qp-stag'; statusTag.style.cssText = 'background:rgba(96,165,250,.15);color:#60a5fa;border:1px solid rgba(96,165,250,.3)';
+      submitBtn.style.display = 'flex';
+    } else if (DONE_CELLS.has(parseInt(key))) {
+      statusTag.className = 'qp-stag qst-done'; statusTag.textContent = '🏆 達成';
+      submitBtn.style.display = 'none';
+    } else {
+      statusTag.className = 'qp-stag'; statusTag.style.cssText = 'background:#1f2937;color:#6b7280;border:1px solid #374151';
+      statusTag.textContent = '📋 受注待ち';
+      submitBtn.style.display = 'flex';
+    }
+    // Show revision box for demo on rls
+    if (key === 'rls') revBox.style.display = 'flex';
+    document.getElementById('quest-overlay').classList.add('open');
+    document.getElementById('quest-panel').classList.add('open');
+  }
+  function closeQuestPanel() {
+    document.getElementById('quest-overlay').classList.remove('open');
+    document.getElementById('quest-panel').classList.remove('open');
   }
 </script>
 </body>

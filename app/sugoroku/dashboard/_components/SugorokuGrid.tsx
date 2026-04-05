@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -33,6 +33,19 @@ interface SugorokuGridProps {
 
 const COLS = 5;
 
+// ── コマホップアニメーション用 ────────────────────────────────────────
+interface HopState {
+  from: { x: number; y: number };
+  to: { x: number; y: number };
+  active: boolean;
+}
+
+function getCellRect(container: HTMLElement, cellIndex: number) {
+  const el = container.querySelector<HTMLElement>(`[data-cell-index="${cellIndex}"]`);
+  if (!el) return null;
+  return el.getBoundingClientRect();
+}
+
 export function SugorokuGrid({
   tasks,
   allTasks,
@@ -44,6 +57,9 @@ export function SugorokuGrid({
 }: SugorokuGridProps) {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [hopState, setHopState] = useState<HopState | null>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const prevCurrentIndexRef = useRef<number | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -60,6 +76,33 @@ export function SugorokuGrid({
     const lastDoneIdx = tasks.length - 1 - lastDone;
     return Math.min(lastDoneIdx + 1, tasks.length - 1);
   }, [tasks]);
+
+  // コマホップアニメーション: currentIndex 変化時に実行
+  useEffect(() => {
+    const prev = prevCurrentIndexRef.current;
+    prevCurrentIndexRef.current = currentIndex;
+
+    if (prev === null || prev === currentIndex || !gridRef.current) return;
+
+    const fromRect = getCellRect(gridRef.current, prev);
+    const toRect = getCellRect(gridRef.current, currentIndex);
+    if (!fromRect || !toRect) return;
+
+    const fromX = fromRect.left + fromRect.width / 2;
+    const fromY = fromRect.top + fromRect.height / 2;
+    const toX = toRect.left + toRect.width / 2;
+    const toY = toRect.top + toRect.height / 2;
+
+    setHopState({ from: { x: fromX, y: fromY }, to: { x: toX, y: toY }, active: false });
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setHopState((s) => (s ? { ...s, active: true } : null));
+      });
+    });
+
+    const cleanup = setTimeout(() => setHopState(null), 700);
+    return () => clearTimeout(cleanup);
+  }, [currentIndex]);
 
   function handleDragStart(event: DragStartEvent) {
     const task = tasks.find((t) => t.id === event.active.id);
@@ -79,7 +122,6 @@ export function SugorokuGrid({
     onReorder(newTasks);
   }
 
-  // tasks が変わったときだけ再計算
   const rows = useMemo<Task[][]>(() => {
     const result: Task[][] = [];
     for (let i = 0; i < tasks.length; i += COLS) {
@@ -88,95 +130,156 @@ export function SugorokuGrid({
     return result;
   }, [tasks]);
 
-  // O(n²) の findIndex を O(1) Map ルックアップに変換
   const originalIndexMap = useMemo(
     () => new Map(tasks.map((t, i) => [t.id, i])),
     [tasks]
   );
 
-  // SortableContext に渡す items も毎回 map しないようメモ化
   const sortableItems = useMemo(() => tasks.map((t) => t.id), [tasks]);
 
   const handleClosePanel = useCallback(() => setSelectedTask(null), []);
 
+  const totalCells = tasks.length;
+
+  // 行コネクターの向き判定（蛇行グリッド用）
+  function getRowConnectorDir(rowIdx: number) {
+    // 偶数行→右端から下、奇数行→左端から下
+    return rowIdx % 2 === 0 ? "right" : "left";
+  }
+
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
-      <SortableContext items={sortableItems} strategy={rectSortingStrategy}>
-        <div>
-          <div className="space-y-2">
-            {rows.map((row, rowIdx) => {
-              const isEvenRow = rowIdx % 2 === 0;
-              const displayRow = isEvenRow ? row : [...row].reverse();
+    <>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext items={sortableItems} strategy={rectSortingStrategy}>
+          <div ref={gridRef}>
+            <div className="space-y-0">
+              {rows.map((row, rowIdx) => {
+                const isEvenRow = rowIdx % 2 === 0;
+                const displayRow = isEvenRow ? row : [...row].reverse();
+                const connDir = getRowConnectorDir(rowIdx);
+                const isLastRow = rowIdx === rows.length - 1;
 
-              return (
-                <div key={rowIdx}>
-                  <div
-                    className="grid gap-2"
-                    style={{ gridTemplateColumns: `repeat(${COLS}, 1fr)` }}
-                  >
-                    {displayRow.map((task) => {
-                      const originalIndex = originalIndexMap.get(task.id) ?? 0;
-                      return (
-                        <TaskCell
-                          key={task.id}
-                          task={task}
-                          isCurrentPosition={originalIndex === currentIndex}
-                          memberForToken={
-                            originalIndex === currentIndex ? currentMember : null
-                          }
-                          onClick={setSelectedTask}
-                          cellIndex={originalIndex}
-                          isAdmin={isAdmin}
-                          onDelete={onDeleteTask}
-                        />
-                      );
-                    })}
-                  </div>
-
-                  {rowIdx < rows.length - 1 && (
-                    <div className="flex justify-end py-1 pr-2">
-                      <span style={{ color: "#2e3347", fontSize: "20px" }}>↓</span>
+                return (
+                  <div key={rowIdx}>
+                    {/* セルの行 */}
+                    <div
+                      className="grid gap-2 pt-5"
+                      style={{ gridTemplateColumns: `repeat(${COLS}, 1fr)` }}
+                    >
+                      {displayRow.map((task) => {
+                        const originalIndex = originalIndexMap.get(task.id) ?? 0;
+                        return (
+                          <TaskCell
+                            key={task.id}
+                            task={task}
+                            isCurrentPosition={originalIndex === currentIndex}
+                            memberForToken={
+                              originalIndex === currentIndex ? currentMember : null
+                            }
+                            onClick={setSelectedTask}
+                            cellIndex={originalIndex}
+                            totalCells={totalCells}
+                            isAdmin={isAdmin}
+                            onDelete={onDeleteTask}
+                          />
+                        );
+                      })}
                     </div>
-                  )}
-                </div>
-              );
-            })}
+
+                    {/* 行コネクター（最終行以外） */}
+                    {!isLastRow && (
+                      <div
+                        className="relative flex items-center py-1"
+                        style={{
+                          justifyContent: connDir === "right" ? "flex-end" : "flex-start",
+                          paddingRight: connDir === "right" ? "calc(10% - 8px)" : undefined,
+                          paddingLeft: connDir === "left" ? "calc(10% - 8px)" : undefined,
+                        }}
+                      >
+                        <div
+                          className="flex flex-col items-center gap-0.5"
+                          style={{ color: "#4a5568" }}
+                        >
+                          <span style={{ fontSize: "13px", lineHeight: 1 }}>│</span>
+                          <span style={{ fontSize: "13px", lineHeight: 1 }}>↓</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
+        </SortableContext>
+
+        <DragOverlay>
+          {activeTask ? (
+            <div
+              className="rounded-xl p-3 rotate-2"
+              style={{
+                minHeight: "92px",
+                background: "rgba(108,99,255,0.25)",
+                border: "2px solid #6c63ff",
+                boxShadow: "0 0 24px rgba(108,99,255,0.5)",
+                cursor: "grabbing",
+                opacity: 0.9,
+              }}
+            >
+              <p className="text-xs font-medium mt-5" style={{ color: "#e2e8f0" }}>
+                {activeTask.title}
+              </p>
+            </div>
+          ) : null}
+        </DragOverlay>
+
+        {selectedTask && (
+          <TaskDetailPanel
+            task={selectedTask}
+            allTasks={allTasks}
+            onClose={handleClosePanel}
+            onTaskUpdated={onTaskUpdated}
+          />
+        )}
+      </DndContext>
+
+      {/* コマホップアニメーション オーバーレイ */}
+      {hopState && currentMember && (
+        <div
+          className="fixed pointer-events-none z-50 flex items-center justify-center rounded-full text-lg font-bold"
+          style={{
+            width: "36px",
+            height: "36px",
+            left: hopState.active ? hopState.to.x - 18 : hopState.from.x - 18,
+            top: hopState.active
+              ? hopState.to.y - 18
+              : hopState.from.y - 18,
+            background: "linear-gradient(135deg,#6c63ff,#a78bfa)",
+            border: "2px solid #fff",
+            boxShadow: "0 0 20px rgba(108,99,255,0.8)",
+            transition: hopState.active
+              ? "left 0.45s cubic-bezier(.4,0,.2,1), top 0.45s cubic-bezier(.4,0,.2,1)"
+              : undefined,
+            overflow: "hidden",
+          }}
+        >
+          {currentMember.avatar_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={currentMember.avatar_url}
+              alt={currentMember.name}
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          ) : (
+            <span style={{ fontSize: "14px" }}>
+              {currentMember.name.slice(0, 1)}
+            </span>
+          )}
         </div>
-      </SortableContext>
-
-      <DragOverlay>
-        {activeTask ? (
-          <div
-            className="rounded-xl p-3 rotate-2"
-            style={{
-              minHeight: "92px",
-              background: "rgba(108,99,255,0.25)",
-              border: "2px solid #6c63ff",
-              boxShadow: "0 0 24px rgba(108,99,255,0.5)",
-              cursor: "grabbing",
-              opacity: 0.9,
-            }}
-          >
-            <p className="text-xs font-medium mt-5" style={{ color: "#e2e8f0" }}>
-              {activeTask.title}
-            </p>
-          </div>
-        ) : null}
-      </DragOverlay>
-
-      {selectedTask && (
-        <TaskDetailPanel
-          task={selectedTask}
-          allTasks={allTasks}
-          onClose={handleClosePanel}
-          onTaskUpdated={onTaskUpdated}
-        />
       )}
 
       <style>{`
@@ -189,6 +292,6 @@ export function SugorokuGrid({
           50% { opacity: 0.4; }
         }
       `}</style>
-    </DndContext>
+    </>
   );
 }

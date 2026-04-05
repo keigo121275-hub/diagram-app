@@ -19,7 +19,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { createClient } from "@/lib/supabase/client";
 import type { Task } from "@/lib/supabase/types";
-import { STATUS_LABELS, STATUS_COLORS } from "@/app/sugoroku/_lib/constants";
+import { STATUS_LABELS, STATUS_COLORS, QUEST_STATUS_LABELS } from "@/app/sugoroku/_lib/constants";
 import CommentSubPanel from "./CommentSubPanel";
 
 interface TaskDetailPanelProps {
@@ -463,8 +463,8 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
         className="fixed top-0 right-0 h-full z-50 overflow-y-auto"
         style={{
           width: "420px",
-          background: "#1a1d27",
-          borderLeft: "1px solid #2e3347",
+          background: "linear-gradient(180deg, #1a1d27 0%, #18162e 100%)",
+          borderLeft: "1px solid #3d3566",
           animation: "slideIn 0.2s ease-out",
         }}
       >
@@ -472,14 +472,17 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
         <div
           className="sticky top-0 px-6 py-4 flex items-center justify-between"
           style={{
-            background: "rgba(26,29,39,0.95)",
-            borderBottom: "1px solid #2e3347",
+            background: "linear-gradient(135deg, rgba(26,29,39,0.97) 0%, rgba(30,26,58,0.97) 100%)",
+            borderBottom: "1px solid #3d3566",
             backdropFilter: "blur(8px)",
           }}
         >
-          <h3 className="font-bold text-sm" style={{ color: "#e2e8f0" }}>
-            タスク詳細
-          </h3>
+          <div className="flex items-center gap-2">
+            <span style={{ fontSize: "18px" }}>⚔️</span>
+            <h3 className="font-bold text-sm" style={{ color: "#e2e8f0" }}>
+              クエスト詳細
+            </h3>
+          </div>
           <button
             onClick={onClose}
             className="w-8 h-8 rounded-lg flex items-center justify-center"
@@ -528,7 +531,7 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
                 className="px-2 py-0.5 rounded text-xs font-medium"
                 style={{ background: largeColors.bg, color: largeColors.text }}
               >
-                {STATUS_LABELS[largeStatus]}
+                {QUEST_STATUS_LABELS[largeStatus]}
               </span>
             </div>
           </div>
@@ -604,10 +607,10 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
             >
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs font-medium" style={{ color: "#94a3b8" }}>
-                  サブタスク
+                  サブクエスト
                   {mediumTasks.length > 0 && (
                     <span style={{ color: "#64748b" }}>
-                      {" "}({mediumTasks.filter((m) => m.status === "done").length}/{mediumTasks.length} 完了)
+                      {" "}({mediumTasks.filter((m) => m.status === "done").length}/{mediumTasks.length} 達成)
                     </span>
                   )}
                 </p>
@@ -616,7 +619,7 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
                   className="text-xs px-2 py-1 rounded-lg"
                   style={{ background: "#1a1d27", border: "1px solid #2e3347", color: "#94a3b8" }}
                 >
-                  + 中タスクを追加
+                  + サブクエスト追加
                 </button>
               </div>
 
@@ -629,7 +632,7 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
                   <input
                     value={addingMediumTitle}
                     onChange={(e) => setAddingMediumTitle(e.target.value)}
-                    placeholder="中タスク名を入力..."
+                    placeholder="サブクエスト名を入力..."
                     onKeyDown={(e) => {
                       if (e.key === "Enter") addMediumTask();
                       if (e.key === "Escape") setShowAddMediumForm(false);
@@ -665,7 +668,7 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
 
               {mediumTasks.length === 0 && !showAddMediumForm ? (
                 <p className="text-xs" style={{ color: "#4a5568" }}>
-                  中タスクがまだありません。「+ 中タスクを追加」から作成できます。
+                  サブクエストがまだありません。「+ サブクエスト追加」から作成できます。
                 </p>
               ) : (
                 /* 中タスクリスト（DnD） */
@@ -1060,10 +1063,10 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
           {largeStatus !== "done" && largeStatus !== "pending_approval" && (
             <div
               className="rounded-xl p-4"
-              style={{ background: "#232636", border: "1px solid #2e3347" }}
+              style={{ background: "#232636", border: "1px solid #3d3566" }}
             >
-              <p className="text-xs font-medium mb-3" style={{ color: "#94a3b8" }}>
-                マスのステータス変更
+              <p className="text-xs font-medium mb-3" style={{ color: "#a5b4fc" }}>
+                ⚔️ クエストを進める
               </p>
               <div className="flex gap-2 flex-wrap">
                 {largeStatus === "todo" && (
@@ -1078,7 +1081,7 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
                       opacity: updatingLarge ? 0.5 : 1,
                     }}
                   >
-                    {updatingLarge ? "..." : "進行中にする"}
+                    {updatingLarge ? "..." : "⚔️ 挑戦開始！"}
                   </button>
                 )}
                 {largeStatus === "in_progress" && (
@@ -1093,7 +1096,7 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
                       opacity: updatingLarge ? 0.5 : 1,
                     }}
                   >
-                    {updatingLarge ? "..." : "完了申請する"}
+                    {updatingLarge ? "..." : "✨ クリア申請する"}
                   </button>
                 )}
                 {largeStatus === "needs_revision" && (
@@ -1108,7 +1111,7 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
                       opacity: updatingLarge ? 0.5 : 1,
                     }}
                   >
-                    {updatingLarge ? "..." : "再申請する"}
+                    {updatingLarge ? "..." : "🔄 再挑戦する"}
                   </button>
                 )}
               </div>
@@ -1122,7 +1125,7 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
               style={{ background: "rgba(250,204,21,0.08)", border: "1px solid rgba(250,204,21,0.25)" }}
             >
               <p className="text-xs" style={{ color: "#facc15" }}>
-                承認待ちです。管理者の確認をお待ちください。
+                ✨ クリア審判中…管理者の判定をお待ちください。
               </p>
             </div>
           )}
@@ -1134,7 +1137,7 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
               style={{ background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.3)" }}
             >
               <p className="text-xs font-medium mb-1" style={{ color: "#f87171" }}>
-                ⚠️ 差し戻しコメント
+                🔄 再挑戦メッセージ
               </p>
               <p className="text-xs whitespace-pre-wrap" style={{ color: "#fca5a5" }}>
                 {rejectionComment}
@@ -1149,7 +1152,7 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
               style={{ background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.25)" }}
             >
               <p className="text-xs font-medium" style={{ color: "#4ade80" }}>
-                🎉 このマスは完了しました！
+                🏆 クエスト達成！このマスをクリアしました！
               </p>
               {approvalMessage && (
                 <p className="text-xs mt-2 whitespace-pre-wrap" style={{ color: "#86efac" }}>
@@ -1166,7 +1169,7 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
               style={{ background: "#232636", border: "1px solid rgba(74,222,128,0.3)" }}
             >
               <p className="text-xs font-medium mb-2" style={{ color: "#4ade80" }}>
-                成果物・報告
+                🗝️ クリア報告・成果物
               </p>
               <textarea
                 value={deliverableNote}
