@@ -39,6 +39,31 @@ function getAllowedEmailsNormalized(): string[] {
   return [...new Set([...team, ...fromEnv])];
 }
 
+// admin ルートのロール検証を軽量キャッシュして DB クエリを削減
+// Edge Runtime ではモジュールスコープ変数がリクエスト間で共有されないことがあるが、
+// Node.js runtime では効果あり。ヒット時は DB クエリをスキップできる。
+const roleCache = new Map<string, { role: string; expiresAt: number }>();
+const ROLE_CACHE_TTL_MS = 60_000; // 60秒
+
+async function getMemberRoleCached(
+  supabase: ReturnType<typeof createServerClient>,
+  userId: string
+): Promise<string | null> {
+  const cached = roleCache.get(userId);
+  if (cached && cached.expiresAt > Date.now()) return cached.role;
+
+  const { data: member } = await supabase
+    .from("members")
+    .select("role")
+    .eq("id", userId)
+    .single();
+
+  if (member?.role) {
+    roleCache.set(userId, { role: member.role, expiresAt: Date.now() + ROLE_CACHE_TTL_MS });
+  }
+  return member?.role ?? null;
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -84,13 +109,9 @@ export async function proxy(request: NextRequest) {
       pathname.startsWith("/sugoroku/admin") ||
       pathname.startsWith("/sugoroku/new-roadmap")
     ) {
-      const { data: member } = await supabase
-        .from("members")
-        .select("role")
-        .eq("id", user.id)
-        .single();
+      const role = await getMemberRoleCached(supabase, user.id);
 
-      if (member?.role !== "admin") {
+      if (role !== "admin") {
         const dashboardUrl = request.nextUrl.clone();
         dashboardUrl.pathname = "/sugoroku/dashboard";
         return NextResponse.redirect(dashboardUrl);

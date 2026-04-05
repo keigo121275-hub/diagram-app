@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { createClient } from "@/lib/supabase/client";
 import type { Member, Task } from "@/lib/supabase/types";
 import type { RoadmapWithTasks } from "@/app/sugoroku/_lib/types";
@@ -9,8 +10,13 @@ import { BoardHeader } from "./BoardHeader";
 import { DeleteConfirmDialog } from "./DeleteConfirmDialog";
 import { MemberTabs } from "./MemberTabs";
 import { ProgressBar } from "./ProgressBar";
-import { SugorokuGrid } from "./SugorokuGrid";
 import { DailyReportModal } from "./DailyReportModal";
+
+// dnd-kit はブラウザ固有の API を初期化時に参照するため SSR をスキップする
+const SugorokuGrid = dynamic(
+  () => import("./SugorokuGrid").then((mod) => mod.SugorokuGrid),
+  { ssr: false }
+);
 
 interface SugorokuBoardProps {
   currentMember: Member | null;
@@ -89,6 +95,8 @@ export default function SugorokuBoard({
           } else if (payload.eventType === "UPDATE") {
             setLocalTasksMap((prev) => {
               const current = prev[activeMemberId] ?? roadmapTasksFallbackRef.current;
+              // ドラッグ並べ替え中のタスクは楽観的 UI を優先して Realtime を無視
+              if (reorderingIds.current.has((payload.new as Task).id)) return prev;
               return {
                 ...prev,
                 [activeMemberId]: current.map((t) =>
@@ -140,6 +148,9 @@ export default function SugorokuBoard({
   const rawTasksRef = useRef<Task[]>(rawTasks);
   rawTasksRef.current = rawTasks;
 
+  // ドラッグ中のタスク ID を追跡して Realtime UPDATE との競合を防ぐ
+  const reorderingIds = useRef<Set<string>>(new Set());
+
   const handleDeleteTask = useCallback(
     async (taskId: string) => {
       if (!confirm("このマスを削除しますか？")) return;
@@ -174,6 +185,10 @@ export default function SugorokuBoard({
       const updatedAllTasks = [...reorderedRootTasks, ...otherTasks];
       setLocalTasksMap((prev) => ({ ...prev, [activeMemberId]: updatedAllTasks }));
 
+      // 並べ替え中フラグをセット（Realtime UPDATE を一時的に無視）
+      const reorderedIds = reorderedRootTasks.map((t) => t.id);
+      reorderedIds.forEach((id) => reorderingIds.current.add(id));
+
       // DB に order を一括更新（router.refresh は不要 - 楽観的 UI で管理）
       const supabase = createClient();
       await Promise.all(
@@ -181,6 +196,8 @@ export default function SugorokuBoard({
           supabase.from("tasks").update({ order: t.order }).eq("id", t.id)
         )
       );
+
+      reorderedIds.forEach((id) => reorderingIds.current.delete(id));
     },
     [activeMemberId]
   );

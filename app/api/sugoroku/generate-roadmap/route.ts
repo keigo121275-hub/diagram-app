@@ -3,6 +3,9 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import type { Member } from "@/lib/supabase/types";
 
+// Vercel タイムアウト対策（Claude の JSON 生成が長い場合に 504 を防ぐ）
+export const maxDuration = 60;
+
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
 });
