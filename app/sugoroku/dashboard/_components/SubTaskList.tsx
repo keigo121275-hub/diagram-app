@@ -88,6 +88,9 @@ export default React.memo(function SubTaskList({
     useSensor(TouchSensor, { activationConstraint: { delay: 400, tolerance: 8 } })
   );
 
+  // タイトル編集中の「1回目のEnter」を追跡するフラグ（2回で確定）
+  const lastKeyWasEnterRef = React.useRef(false);
+
   // ---- 追加フォーム状態 ----
   const [showAddMediumForm, setShowAddMediumForm] = React.useState(false);
   const [addingMediumTitle, setAddingMediumTitle] = React.useState("");
@@ -384,8 +387,19 @@ export default React.memo(function SubTaskList({
                                   }
                                   onBlur={() => saveMediumTitle(medium.id)}
                                   onKeyDown={(e) => {
-                                    if (e.key === "Enter") saveMediumTitle(medium.id);
-                                    if (e.key === "Escape") setEditingMediumId(null);
+                                    if (e.key === "Enter") {
+                                      if (lastKeyWasEnterRef.current) {
+                                        lastKeyWasEnterRef.current = false;
+                                        saveMediumTitle(medium.id);
+                                      } else {
+                                        lastKeyWasEnterRef.current = true;
+                                      }
+                                    } else if (e.key === "Escape") {
+                                      lastKeyWasEnterRef.current = false;
+                                      setEditingMediumId(null);
+                                    } else {
+                                      lastKeyWasEnterRef.current = false;
+                                    }
                                   }}
                                   autoFocus
                                   className="w-full px-2 py-0.5 rounded text-sm outline-none"
@@ -510,8 +524,19 @@ export default React.memo(function SubTaskList({
                                                     }
                                                     onBlur={() => saveSmallTitle(medium.id, small.id)}
                                                     onKeyDown={(e) => {
-                                                      if (e.key === "Enter") saveSmallTitle(medium.id, small.id);
-                                                      if (e.key === "Escape") setEditingSmallId(null);
+                                                      if (e.key === "Enter") {
+                                                        if (lastKeyWasEnterRef.current) {
+                                                          lastKeyWasEnterRef.current = false;
+                                                          saveSmallTitle(medium.id, small.id);
+                                                        } else {
+                                                          lastKeyWasEnterRef.current = true;
+                                                        }
+                                                      } else if (e.key === "Escape") {
+                                                        lastKeyWasEnterRef.current = false;
+                                                        setEditingSmallId(null);
+                                                      } else {
+                                                        lastKeyWasEnterRef.current = false;
+                                                      }
                                                     }}
                                                     autoFocus
                                                     className="w-full px-1.5 py-0.5 rounded text-xs outline-none"
