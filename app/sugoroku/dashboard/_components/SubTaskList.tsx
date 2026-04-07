@@ -91,11 +91,6 @@ export default React.memo(function SubTaskList({
     useSensor(TouchSensor, { activationConstraint: { delay: 400, tolerance: 8 } })
   );
 
-  // タイトル編集中の Enter を中・小それぞれ独立して追跡（2回で確定）
-  const mediumLastEnterRef = React.useRef(false);
-  const smallLastEnterRef = React.useRef(false);
-
-  // ---- 保存エラー表示 ----
   const [saveError, setSaveError] = React.useState<string | null>(null);
 
   useEffect(() => {
@@ -454,39 +449,40 @@ export default React.memo(function SubTaskList({
                             </button>
                             <div className="flex-1 min-w-0">
                               {editingMediumId === medium.id ? (
-                                <input
+                                <textarea
                                   value={mediumTitleValues[medium.id] ?? medium.title}
                                   onChange={(e) =>
                                     setMediumTitleValues((prev) => ({ ...prev, [medium.id]: e.target.value }))
                                   }
                                   onBlur={() => {
-                                    mediumLastEnterRef.current = false;
                                     saveMediumTitle(medium.id);
                                   }}
                                   onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                      e.preventDefault();
-                                      if (mediumLastEnterRef.current) {
-                                        mediumLastEnterRef.current = false;
-                                        saveMediumTitle(medium.id);
-                                      } else {
-                                        mediumLastEnterRef.current = true;
-                                      }
-                                    } else if (e.key === "Escape") {
-                                      mediumLastEnterRef.current = false;
+                                    if (e.key === "Escape") {
                                       setEditingMediumId(null);
-                                    } else {
-                                      mediumLastEnterRef.current = false;
                                     }
                                   }}
-                                  autoFocus
-                                  className="w-full px-2 py-0.5 rounded text-sm outline-none"
-                                  style={{ background: "#232636", border: "1px solid #6c63ff44", color: "#e2e8f0" }}
+                                  onInput={(e) => {
+                                    const el = e.currentTarget;
+                                    el.style.height = "auto";
+                                    el.style.height = el.scrollHeight + "px";
+                                  }}
+                                  ref={(el) => {
+                                    if (el) {
+                                      el.style.height = "auto";
+                                      el.style.height = el.scrollHeight + "px";
+                                      el.focus();
+                                      el.setSelectionRange(el.value.length, el.value.length);
+                                    }
+                                  }}
+                                  rows={1}
+                                  className="w-full px-2 py-0.5 rounded text-sm outline-none resize-none overflow-hidden"
+                                  style={{ background: "#232636", border: "1px solid #6c63ff44", color: "#e2e8f0", lineHeight: "1.5" }}
                                 />
                               ) : (
                                 <p
                                   className="text-sm font-medium leading-snug cursor-pointer"
-                                  style={{ color: "#e2e8f0" }}
+                                  style={{ color: "#e2e8f0", whiteSpace: "pre-wrap", wordBreak: "break-word" }}
                                   title="クリックして編集"
                                   onClick={() => {
                                     setEditingMediumId(medium.id);
@@ -595,39 +591,40 @@ export default React.memo(function SubTaskList({
                                               </span>
                                               <div className="flex-1 min-w-0">
                                                 {editingSmallId === small.id ? (
-                                                  <input
+                                                  <textarea
                                                     value={smallTitleValues[small.id] ?? small.title}
                                                     onChange={(e) =>
                                                       setSmallTitleValues((prev) => ({ ...prev, [small.id]: e.target.value }))
                                                     }
                                                     onBlur={() => {
-                                                      smallLastEnterRef.current = false;
                                                       saveSmallTitle(medium.id, small.id);
                                                     }}
                                                     onKeyDown={(e) => {
-                                                      if (e.key === "Enter") {
-                                                        e.preventDefault();
-                                                        if (smallLastEnterRef.current) {
-                                                          smallLastEnterRef.current = false;
-                                                          saveSmallTitle(medium.id, small.id);
-                                                        } else {
-                                                          smallLastEnterRef.current = true;
-                                                        }
-                                                      } else if (e.key === "Escape") {
-                                                        smallLastEnterRef.current = false;
+                                                      if (e.key === "Escape") {
                                                         setEditingSmallId(null);
-                                                      } else {
-                                                        smallLastEnterRef.current = false;
                                                       }
                                                     }}
-                                                    autoFocus
-                                                    className="w-full px-1.5 py-0.5 rounded text-xs outline-none"
-                                                    style={{ background: "#1e2032", border: "1px solid #6c63ff44", color: "#e2e8f0" }}
+                                                    onInput={(e) => {
+                                                      const el = e.currentTarget;
+                                                      el.style.height = "auto";
+                                                      el.style.height = el.scrollHeight + "px";
+                                                    }}
+                                                    ref={(el) => {
+                                                      if (el) {
+                                                        el.style.height = "auto";
+                                                        el.style.height = el.scrollHeight + "px";
+                                                        el.focus();
+                                                        el.setSelectionRange(el.value.length, el.value.length);
+                                                      }
+                                                    }}
+                                                    rows={1}
+                                                    className="w-full px-1.5 py-0.5 rounded text-xs outline-none resize-none overflow-hidden"
+                                                    style={{ background: "#1e2032", border: "1px solid #6c63ff44", color: "#e2e8f0", lineHeight: "1.5" }}
                                                   />
                                                 ) : (
                                                   <p
                                                     className="text-xs leading-snug cursor-pointer"
-                                                    style={{ color: "#cbd5e1" }}
+                                                    style={{ color: "#cbd5e1", whiteSpace: "pre-wrap", wordBreak: "break-word" }}
                                                     title="クリックして編集"
                                                     onClick={() => {
                                                       setEditingSmallId(small.id);

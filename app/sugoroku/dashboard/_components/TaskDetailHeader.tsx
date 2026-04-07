@@ -52,22 +52,34 @@ export default React.memo(function TaskDetailHeader({
       {/* タイトル・ステータスバッジ */}
       <div>
         {editing ? (
-          <input
+          <textarea
             value={titleValue}
             onChange={(e) => setTitleValue(e.target.value)}
             onBlur={handleSave}
             onKeyDown={(e) => {
-              if (e.key === "Enter") handleSave();
-              if (e.key === "Escape") { setEditing(false); setTitleValue(task.title); }
+              if (e.key === "Escape") { e.preventDefault(); setEditing(false); setTitleValue(task.title); }
             }}
-            autoFocus
-            className="w-full px-3 py-1.5 rounded-lg text-base font-bold outline-none"
-            style={{ background: "#232636", border: "1px solid #6c63ff", color: "#e2e8f0" }}
+            onInput={(e) => {
+              const el = e.currentTarget;
+              el.style.height = "auto";
+              el.style.height = el.scrollHeight + "px";
+            }}
+            ref={(el) => {
+              if (el) {
+                el.style.height = "auto";
+                el.style.height = el.scrollHeight + "px";
+                el.focus();
+                el.setSelectionRange(el.value.length, el.value.length);
+              }
+            }}
+            rows={1}
+            className="w-full px-3 py-1.5 rounded-lg text-base font-bold outline-none resize-none overflow-hidden"
+            style={{ background: "#232636", border: "1px solid #6c63ff", color: "#e2e8f0", lineHeight: "1.5" }}
           />
         ) : (
           <h2
             className="text-base font-bold leading-snug cursor-pointer hover:underline"
-            style={{ color: "#e2e8f0" }}
+            style={{ color: "#e2e8f0", whiteSpace: "pre-wrap", wordBreak: "break-word" }}
             title="クリックして編集"
             onClick={() => { setEditing(true); setTitleValue(task.title); }}
           >
