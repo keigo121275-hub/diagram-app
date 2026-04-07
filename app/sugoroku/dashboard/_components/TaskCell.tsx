@@ -200,7 +200,7 @@ export const TaskCell = memo(function TaskCell({
       >
         <p
           className="text-sm font-medium leading-snug"
-          style={{ color: isDone ? "#86efac" : "#e2e8f0" }}
+          style={{ color: isDone ? "#86efac" : "#e2e8f0", whiteSpace: "pre-wrap", wordBreak: "break-word" }}
         >
           {task.title}
         </p>
