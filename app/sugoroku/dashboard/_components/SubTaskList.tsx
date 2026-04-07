@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect } from "react";
 import {
   DndContext,
   PointerSensor,
@@ -88,8 +88,14 @@ export default React.memo(function SubTaskList({
     useSensor(TouchSensor, { activationConstraint: { delay: 400, tolerance: 8 } })
   );
 
-  // タイトル編集中の「1回目のEnter」を追跡するフラグ（2回で確定）
-  const lastKeyWasEnterRef = React.useRef(false);
+  // ---- 保存エラー表示 ----
+  const [saveError, setSaveError] = React.useState<string | null>(null);
+
+  useEffect(() => {
+    if (!saveError) return;
+    const timer = setTimeout(() => setSaveError(null), 5000);
+    return () => clearTimeout(timer);
+  }, [saveError]);
 
   // ---- 追加フォーム状態 ----
   const [showAddMediumForm, setShowAddMediumForm] = React.useState(false);
@@ -108,7 +114,12 @@ export default React.memo(function SubTaskList({
     const trimmed = (mediumTitleValues[mediumId] ?? "").trim();
     const original = mediumTasks.find((t) => t.id === mediumId)?.title ?? "";
     if (!trimmed || trimmed === original) { setEditingMediumId(null); return; }
-    await supabase.from("tasks").update({ title: trimmed }).eq("id", mediumId);
+    const { error } = await supabase.from("tasks").update({ title: trimmed }).eq("id", mediumId);
+    if (error) {
+      console.error("[SubTaskList] saveMediumTitle failed:", error);
+      setSaveError("タイトルの保存に失敗しました。再度お試しください。");
+      return;
+    }
     setMediumTasks((prev) => prev.map((t) => (t.id === mediumId ? { ...t, title: trimmed } : t)));
     setEditingMediumId(null);
   };
@@ -117,7 +128,12 @@ export default React.memo(function SubTaskList({
     const trimmed = (smallTitleValues[smallId] ?? "").trim();
     const original = (smallTasksMap[mediumId] ?? []).find((t) => t.id === smallId)?.title ?? "";
     if (!trimmed || trimmed === original) { setEditingSmallId(null); return; }
-    await supabase.from("tasks").update({ title: trimmed }).eq("id", smallId);
+    const { error } = await supabase.from("tasks").update({ title: trimmed }).eq("id", smallId);
+    if (error) {
+      console.error("[SubTaskList] saveSmallTitle failed:", error);
+      setSaveError("タイトルの保存に失敗しました。再度お試しください。");
+      return;
+    }
     setSmallTasksMap((prev) => ({
       ...prev,
       [mediumId]: (prev[mediumId] ?? []).map((t) => (t.id === smallId ? { ...t, title: trimmed } : t)),
@@ -127,7 +143,11 @@ export default React.memo(function SubTaskList({
 
   const saveMemo = async (taskId: string) => {
     const value = memoValues[taskId] ?? "";
-    await supabase.from("tasks").update({ description: value || null }).eq("id", taskId);
+    const { error } = await supabase.from("tasks").update({ description: value || null }).eq("id", taskId);
+    if (error) {
+      console.error("[SubTaskList] saveMemo failed:", error);
+      setSaveError("メモの保存に失敗しました。再度お試しください。");
+    }
   };
 
   const updateTaskStatus = async (
@@ -137,7 +157,13 @@ export default React.memo(function SubTaskList({
     mediumParentId?: string
   ) => {
     setUpdatingTask(taskId);
-    await supabase.from("tasks").update({ status: newStatus }).eq("id", taskId);
+    const { error } = await supabase.from("tasks").update({ status: newStatus }).eq("id", taskId);
+    if (error) {
+      console.error("[SubTaskList] updateTaskStatus failed:", error);
+      setSaveError("ステータスの更新に失敗しました。再度お試しください。");
+      setUpdatingTask(null);
+      return;
+    }
     if (isMedium) {
       setMediumTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t)));
     } else if (mediumParentId) {
@@ -154,7 +180,7 @@ export default React.memo(function SubTaskList({
   const addMediumTask = async () => {
     if (!addingMediumTitle.trim()) return;
     setAddingMedium(true);
-    const { data: newTask } = await supabase
+    const { data: newTask, error } = await supabase
       .from("tasks")
       .insert({
         roadmap_id: parentTask.roadmap_id,
@@ -166,12 +192,16 @@ export default React.memo(function SubTaskList({
       })
       .select()
       .single();
-    if (newTask) {
-      const t = newTask as Task;
-      setMediumTasks((prev) => [...prev, t]);
-      setSmallTasksMap((prev) => ({ ...prev, [t.id]: [] }));
-      setExpandedMediumIds((prev) => new Set([...prev, t.id]));
+    if (error || !newTask) {
+      console.error("[SubTaskList] addMediumTask failed:", error);
+      setSaveError("中タスクの追加に失敗しました。再度お試しください。");
+      setAddingMedium(false);
+      return;
     }
+    const t = newTask as Task;
+    setMediumTasks((prev) => [...prev, t]);
+    setSmallTasksMap((prev) => ({ ...prev, [t.id]: [] }));
+    setExpandedMediumIds((prev) => new Set([...prev, t.id]));
     setAddingMediumTitle("");
     setShowAddMediumForm(false);
     setAddingMedium(false);
@@ -182,7 +212,7 @@ export default React.memo(function SubTaskList({
     if (!title) return;
     setAddingSmall(mediumId);
     const currentSmalls = smallTasksMap[mediumId] ?? [];
-    const { data: newTask } = await supabase
+    const { data: newTask, error } = await supabase
       .from("tasks")
       .insert({
         roadmap_id: parentTask.roadmap_id,
@@ -194,12 +224,16 @@ export default React.memo(function SubTaskList({
       })
       .select()
       .single();
-    if (newTask) {
-      setSmallTasksMap((prev) => ({
-        ...prev,
-        [mediumId]: [...(prev[mediumId] ?? []), newTask as Task],
-      }));
+    if (error || !newTask) {
+      console.error("[SubTaskList] addSmallTask failed:", error);
+      setSaveError("小タスクの追加に失敗しました。再度お試しください。");
+      setAddingSmall(null);
+      return;
     }
+    setSmallTasksMap((prev) => ({
+      ...prev,
+      [mediumId]: [...(prev[mediumId] ?? []), newTask as Task],
+    }));
     setAddingSmallTitle((prev) => ({ ...prev, [mediumId]: "" }));
     setShowAddSmallMap((prev) => ({ ...prev, [mediumId]: false }));
     setAddingSmall(null);
@@ -208,8 +242,20 @@ export default React.memo(function SubTaskList({
   const deleteMediumTask = async (mediumId: string) => {
     if (!confirm("この中タスクと、その小タスクをすべて削除しますか？")) return;
     const smallIds = (smallTasksMap[mediumId] ?? []).map((t) => t.id);
-    if (smallIds.length > 0) await supabase.from("tasks").delete().in("id", smallIds);
-    await supabase.from("tasks").delete().eq("id", mediumId);
+    if (smallIds.length > 0) {
+      const { error } = await supabase.from("tasks").delete().in("id", smallIds);
+      if (error) {
+        console.error("[SubTaskList] deleteMediumTask (small tasks) failed:", error);
+        setSaveError("削除に失敗しました。再度お試しください。");
+        return;
+      }
+    }
+    const { error } = await supabase.from("tasks").delete().eq("id", mediumId);
+    if (error) {
+      console.error("[SubTaskList] deleteMediumTask failed:", error);
+      setSaveError("削除に失敗しました。再度お試しください。");
+      return;
+    }
     setMediumTasks((prev) => prev.filter((t) => t.id !== mediumId));
     setSmallTasksMap((prev) => {
       const next = { ...prev };
@@ -220,7 +266,12 @@ export default React.memo(function SubTaskList({
 
   const deleteSmallTask = async (mediumId: string, smallId: string) => {
     if (!confirm("この小タスクを削除しますか？")) return;
-    await supabase.from("tasks").delete().eq("id", smallId);
+    const { error } = await supabase.from("tasks").delete().eq("id", smallId);
+    if (error) {
+      console.error("[SubTaskList] deleteSmallTask failed:", error);
+      setSaveError("削除に失敗しました。再度お試しください。");
+      return;
+    }
     setSmallTasksMap((prev) => ({
       ...prev,
       [mediumId]: (prev[mediumId] ?? []).filter((t) => t.id !== smallId),
@@ -264,6 +315,17 @@ export default React.memo(function SubTaskList({
       className="rounded-xl p-4"
       style={{ background: "#232636", border: "1px solid #2e3347" }}
     >
+      {/* 保存エラー通知 */}
+      {saveError && (
+        <div
+          className="mb-3 px-3 py-2 rounded-lg text-xs flex items-center justify-between"
+          style={{ background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.4)", color: "#fca5a5" }}
+        >
+          <span>⚠️ {saveError}</span>
+          <button onClick={() => setSaveError(null)} style={{ color: "#fca5a5" }}>✕</button>
+        </div>
+      )}
+
       <div className="flex items-center justify-between mb-3">
         <p className="text-xs font-medium" style={{ color: "#94a3b8" }}>
           サブクエスト
@@ -388,17 +450,10 @@ export default React.memo(function SubTaskList({
                                   onBlur={() => saveMediumTitle(medium.id)}
                                   onKeyDown={(e) => {
                                     if (e.key === "Enter") {
-                                      if (lastKeyWasEnterRef.current) {
-                                        lastKeyWasEnterRef.current = false;
-                                        saveMediumTitle(medium.id);
-                                      } else {
-                                        lastKeyWasEnterRef.current = true;
-                                      }
+                                      e.preventDefault();
+                                      saveMediumTitle(medium.id);
                                     } else if (e.key === "Escape") {
-                                      lastKeyWasEnterRef.current = false;
                                       setEditingMediumId(null);
-                                    } else {
-                                      lastKeyWasEnterRef.current = false;
                                     }
                                   }}
                                   autoFocus
@@ -525,17 +580,10 @@ export default React.memo(function SubTaskList({
                                                     onBlur={() => saveSmallTitle(medium.id, small.id)}
                                                     onKeyDown={(e) => {
                                                       if (e.key === "Enter") {
-                                                        if (lastKeyWasEnterRef.current) {
-                                                          lastKeyWasEnterRef.current = false;
-                                                          saveSmallTitle(medium.id, small.id);
-                                                        } else {
-                                                          lastKeyWasEnterRef.current = true;
-                                                        }
+                                                        e.preventDefault();
+                                                        saveSmallTitle(medium.id, small.id);
                                                       } else if (e.key === "Escape") {
-                                                        lastKeyWasEnterRef.current = false;
                                                         setEditingSmallId(null);
-                                                      } else {
-                                                        lastKeyWasEnterRef.current = false;
                                                       }
                                                     }}
                                                     autoFocus

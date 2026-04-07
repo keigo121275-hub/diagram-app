@@ -57,6 +57,15 @@ export function SugorokuGrid({
 }: SugorokuGridProps) {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+
+  // allTasks が Realtime で更新されたとき selectedTask を最新のデータに追従させる
+  useEffect(() => {
+    if (!selectedTask) return;
+    const updated = allTasks.find((t) => t.id === selectedTask.id);
+    if (updated && updated !== selectedTask) {
+      setSelectedTask(updated);
+    }
+  }, [allTasks, selectedTask]);
   const [hopState, setHopState] = useState<HopState | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const prevCurrentIndexRef = useRef<number | null>(null);

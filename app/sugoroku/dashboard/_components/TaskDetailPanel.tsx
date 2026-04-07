@@ -37,6 +37,50 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
     return map;
   });
 
+  // allTasks が Realtime で更新されたとき、中・小タスク状態に追従させる
+  // 楽観的 UI (setMediumTasks/setSmallTasksMap) が既に反映済みの場合は上書きしない
+  useEffect(() => {
+    const latestMedium = allTasks
+      .filter((t) => t.parent_id === task.id)
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+    setMediumTasks((prev) => {
+      // 追加・削除があれば更新。既存の各タスクは allTasks の最新値で上書き
+      const merged = latestMedium.map((latest) => {
+        const local = prev.find((p) => p.id === latest.id);
+        // ローカル側のほうが order が正しい場合（ドラッグ後など）はローカルを優先
+        return local ?? latest;
+      });
+      // タスク数や ID セットが変わった場合のみ更新して無駄な再レンダーを防ぐ
+      const prevIds = prev.map((t) => t.id).join(",");
+      const nextIds = merged.map((t) => t.id).join(",");
+      if (prevIds === nextIds && merged.every((t, i) => t === prev[i])) return prev;
+      return merged;
+    });
+
+    setSmallTasksMap((prev) => {
+      const mediumIds = latestMedium.map((t) => t.id);
+      const next: Record<string, Task[]> = {};
+      for (const mid of mediumIds) {
+        const latestSmalls = allTasks
+          .filter((t) => t.parent_id === mid)
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+        const prevSmalls = prev[mid] ?? [];
+        // 個々のタスクは allTasks の最新値に更新（ローカル追加分は保持）
+        const merged = latestSmalls.map((latest) => {
+          const local = prevSmalls.find((p) => p.id === latest.id);
+          return local ?? latest;
+        });
+        // ローカルにしか存在しないタスク（INSERT 直後で Realtime 未着）を保持
+        const latestIds = new Set(latestSmalls.map((t) => t.id));
+        const localOnly = prevSmalls.filter((p) => !latestIds.has(p.id));
+        next[mid] = [...merged, ...localOnly];
+      }
+      return next;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allTasks, task.id]);
+
   // ---- メモ状態（差分更新で入力中を保護） ----
   const [memoValues, setMemoValues] = useState<Record<string, string>>(() => {
     const map: Record<string, string> = {};
