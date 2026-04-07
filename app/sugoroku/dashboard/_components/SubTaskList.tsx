@@ -64,6 +64,8 @@ interface SubTaskListProps {
   updatingTask: string | null;
   setUpdatingTask: React.Dispatch<React.SetStateAction<string | null>>;
   onCommentClick: (task: Task) => void;
+  /** 中・小タスクの変更を SugorokuBoard の localTasksMap に即時反映するコールバック */
+  onTaskUpdated?: (id: string, patch: Partial<Task>) => void;
 }
 
 export default React.memo(function SubTaskList({
@@ -80,6 +82,7 @@ export default React.memo(function SubTaskList({
   updatingTask,
   setUpdatingTask,
   onCommentClick,
+  onTaskUpdated,
 }: SubTaskListProps) {
   const supabase = useMemo(() => createClient(), []);
 
@@ -125,6 +128,7 @@ export default React.memo(function SubTaskList({
       return;
     }
     setMediumTasks((prev) => prev.map((t) => (t.id === mediumId ? { ...t, title: trimmed } : t)));
+    onTaskUpdated?.(mediumId, { title: trimmed });
     setEditingMediumId(null);
   };
 
@@ -142,6 +146,7 @@ export default React.memo(function SubTaskList({
       ...prev,
       [mediumId]: (prev[mediumId] ?? []).map((t) => (t.id === smallId ? { ...t, title: trimmed } : t)),
     }));
+    onTaskUpdated?.(smallId, { title: trimmed });
     setEditingSmallId(null);
   };
 
@@ -151,7 +156,9 @@ export default React.memo(function SubTaskList({
     if (error) {
       console.error("[SubTaskList] saveMemo failed:", error);
       setSaveError("メモの保存に失敗しました。再度お試しください。");
+      return;
     }
+    onTaskUpdated?.(taskId, { description: value || null });
   };
 
   const updateTaskStatus = async (
@@ -178,6 +185,7 @@ export default React.memo(function SubTaskList({
         ),
       }));
     }
+    onTaskUpdated?.(taskId, { status: newStatus });
     setUpdatingTask(null);
   };
 

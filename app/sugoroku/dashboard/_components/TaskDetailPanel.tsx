@@ -12,7 +12,7 @@ interface TaskDetailPanelProps {
   task: Task;
   allTasks: Task[];
   onClose: () => void;
-  /** 大タスクのフィールド変更をボードに通知（grid の即時更新用）*/
+  /** タスク（大・中・小問わず）のフィールド変更をボードに通知（即時 UI 更新用）*/
   onTaskUpdated?: (id: string, patch: Partial<Task>) => void;
 }
 
@@ -37,25 +37,24 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
     return map;
   });
 
-  // allTasks が Realtime で更新されたとき、中・小タスク状態に追従させる
-  // 楽観的 UI (setMediumTasks/setSmallTasksMap) が既に反映済みの場合は上書きしない
+  // allTasks が更新されたとき、中・小タスク状態に追従させる
+  // allTasks の最新データを優先し、まだ allTasks に存在しないローカル追加分のみ保持
   useEffect(() => {
     const latestMedium = allTasks
       .filter((t) => t.parent_id === task.id)
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
     setMediumTasks((prev) => {
-      // 追加・削除があれば更新。既存の各タスクは allTasks の最新値で上書き
-      const merged = latestMedium.map((latest) => {
-        const local = prev.find((p) => p.id === latest.id);
-        // ローカル側のほうが order が正しい場合（ドラッグ後など）はローカルを優先
-        return local ?? latest;
-      });
-      // タスク数や ID セットが変わった場合のみ更新して無駄な再レンダーを防ぐ
-      const prevIds = prev.map((t) => t.id).join(",");
-      const nextIds = merged.map((t) => t.id).join(",");
-      if (prevIds === nextIds && merged.every((t, i) => t === prev[i])) return prev;
-      return merged;
+      // ローカルにしか存在しないタスク（INSERT 直後で allTasks 未反映）を保持
+      const latestIds = new Set(latestMedium.map((t) => t.id));
+      const localOnly = prev.filter((p) => !latestIds.has(p.id));
+      const result = [...latestMedium, ...localOnly];
+      // データが実質変わっていなければ同じ参照を返して無駄な再レンダーを防ぐ
+      if (
+        result.length === prev.length &&
+        result.every((t, i) => t.id === prev[i]?.id && t.status === prev[i]?.status && t.title === prev[i]?.title)
+      ) return prev;
+      return result;
     });
 
     setSmallTasksMap((prev) => {
@@ -66,15 +65,9 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
           .filter((t) => t.parent_id === mid)
           .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
         const prevSmalls = prev[mid] ?? [];
-        // 個々のタスクは allTasks の最新値に更新（ローカル追加分は保持）
-        const merged = latestSmalls.map((latest) => {
-          const local = prevSmalls.find((p) => p.id === latest.id);
-          return local ?? latest;
-        });
-        // ローカルにしか存在しないタスク（INSERT 直後で Realtime 未着）を保持
         const latestIds = new Set(latestSmalls.map((t) => t.id));
         const localOnly = prevSmalls.filter((p) => !latestIds.has(p.id));
-        next[mid] = [...merged, ...localOnly];
+        next[mid] = [...latestSmalls, ...localOnly];
       }
       return next;
     });
@@ -317,6 +310,7 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
               updatingTask={updatingTask}
               setUpdatingTask={setUpdatingTask}
               onCommentClick={setCommentSubTask}
+              onTaskUpdated={onTaskUpdated}
             />
           )}
 
