@@ -88,6 +88,10 @@ export default React.memo(function SubTaskList({
     useSensor(TouchSensor, { activationConstraint: { delay: 400, tolerance: 8 } })
   );
 
+  // タイトル編集中の Enter を中・小それぞれ独立して追跡（2回で確定）
+  const mediumLastEnterRef = React.useRef(false);
+  const smallLastEnterRef = React.useRef(false);
+
   // ---- 保存エラー表示 ----
   const [saveError, setSaveError] = React.useState<string | null>(null);
 
@@ -447,13 +451,24 @@ export default React.memo(function SubTaskList({
                                   onChange={(e) =>
                                     setMediumTitleValues((prev) => ({ ...prev, [medium.id]: e.target.value }))
                                   }
-                                  onBlur={() => saveMediumTitle(medium.id)}
+                                  onBlur={() => {
+                                    mediumLastEnterRef.current = false;
+                                    saveMediumTitle(medium.id);
+                                  }}
                                   onKeyDown={(e) => {
                                     if (e.key === "Enter") {
                                       e.preventDefault();
-                                      saveMediumTitle(medium.id);
+                                      if (mediumLastEnterRef.current) {
+                                        mediumLastEnterRef.current = false;
+                                        saveMediumTitle(medium.id);
+                                      } else {
+                                        mediumLastEnterRef.current = true;
+                                      }
                                     } else if (e.key === "Escape") {
+                                      mediumLastEnterRef.current = false;
                                       setEditingMediumId(null);
+                                    } else {
+                                      mediumLastEnterRef.current = false;
                                     }
                                   }}
                                   autoFocus
@@ -577,13 +592,24 @@ export default React.memo(function SubTaskList({
                                                     onChange={(e) =>
                                                       setSmallTitleValues((prev) => ({ ...prev, [small.id]: e.target.value }))
                                                     }
-                                                    onBlur={() => saveSmallTitle(medium.id, small.id)}
+                                                    onBlur={() => {
+                                                      smallLastEnterRef.current = false;
+                                                      saveSmallTitle(medium.id, small.id);
+                                                    }}
                                                     onKeyDown={(e) => {
                                                       if (e.key === "Enter") {
                                                         e.preventDefault();
-                                                        saveSmallTitle(medium.id, small.id);
+                                                        if (smallLastEnterRef.current) {
+                                                          smallLastEnterRef.current = false;
+                                                          saveSmallTitle(medium.id, small.id);
+                                                        } else {
+                                                          smallLastEnterRef.current = true;
+                                                        }
                                                       } else if (e.key === "Escape") {
+                                                        smallLastEnterRef.current = false;
                                                         setEditingSmallId(null);
+                                                      } else {
+                                                        smallLastEnterRef.current = false;
                                                       }
                                                     }}
                                                     autoFocus
