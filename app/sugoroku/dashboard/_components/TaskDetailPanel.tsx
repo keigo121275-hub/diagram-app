@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Task } from "@/lib/supabase/types";
 import TaskDetailHeader from "./TaskDetailHeader";
@@ -105,6 +105,15 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
   const [savingDeliverable, setSavingDeliverable] = useState(false);
   const [taskDescription, setTaskDescription] = useState<string>(task.description ?? "");
   const [savingDescription, setSavingDescription] = useState(false);
+  const [descriptionSaved, setDescriptionSaved] = useState(false);
+  const descTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // パネル unmount 時にタイマーをクリア
+  useEffect(() => {
+    return () => {
+      if (descTimerRef.current) clearTimeout(descTimerRef.current);
+    };
+  }, []);
 
   // ---- 展開状態 ----
   const [expandedMediumIds, setExpandedMediumIds] = useState<Set<string>>(
@@ -196,10 +205,33 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
     handleDueDateBlur("");
   };
 
-  const handleDescriptionBlur = async () => {
+  const saveDescription = async (value: string) => {
     setSavingDescription(true);
-    await supabase.from("tasks").update({ description: taskDescription || null }).eq("id", task.id);
+    setDescriptionSaved(false);
+    await supabase.from("tasks").update({ description: value || null }).eq("id", task.id);
+    onTaskUpdated?.(task.id, { description: value || null });
     setSavingDescription(false);
+    setDescriptionSaved(true);
+    setTimeout(() => setDescriptionSaved(false), 2000);
+  };
+
+  const handleDescriptionChange = (value: string) => {
+    setTaskDescription(value);
+    // 入力停止 800ms 後に自動保存（デバウンス）
+    if (descTimerRef.current) clearTimeout(descTimerRef.current);
+    descTimerRef.current = setTimeout(() => {
+      descTimerRef.current = null;
+      saveDescription(value);
+    }, 800);
+  };
+
+  const handleDescriptionBlur = () => {
+    // blur 時はデバウンスをキャンセルして即時保存
+    if (descTimerRef.current) {
+      clearTimeout(descTimerRef.current);
+      descTimerRef.current = null;
+    }
+    saveDescription(taskDescription);
   };
 
   const handleDeliverableBlur = async () => {
@@ -286,11 +318,12 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
             savingDate={savingDate}
             taskDescription={taskDescription}
             savingDescription={savingDescription}
+            descriptionSaved={descriptionSaved}
             onTitleSave={handleTitleSave}
             onDueDateChange={setDueDate}
             onDueDateBlur={handleDueDateBlur}
             onDueDateClear={handleDueDateClear}
-            onDescriptionChange={setTaskDescription}
+            onDescriptionChange={handleDescriptionChange}
             onDescriptionBlur={handleDescriptionBlur}
           />
 

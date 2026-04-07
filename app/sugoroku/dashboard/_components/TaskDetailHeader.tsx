@@ -11,6 +11,7 @@ interface TaskDetailHeaderProps {
   savingDate: boolean;
   taskDescription: string;
   savingDescription: boolean;
+  descriptionSaved: boolean;
   onTitleSave: (title: string) => void;
   onDueDateChange: (v: string) => void;
   onDueDateBlur: (v: string) => void;
@@ -26,6 +27,7 @@ export default React.memo(function TaskDetailHeader({
   savingDate,
   taskDescription,
   savingDescription,
+  descriptionSaved,
   onTitleSave,
   onDueDateChange,
   onDueDateBlur,
@@ -132,9 +134,17 @@ export default React.memo(function TaskDetailHeader({
         className="rounded-xl p-4"
         style={{ background: "#232636", border: "1px solid #2e3347" }}
       >
-        <p className="text-xs font-medium mb-2" style={{ color: "#94a3b8" }}>
-          説明・背景
-        </p>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs font-medium" style={{ color: "#94a3b8" }}>
+            説明・背景
+          </p>
+          {savingDescription && (
+            <span className="text-xs" style={{ color: "#6c63ff" }}>保存中...</span>
+          )}
+          {!savingDescription && descriptionSaved && (
+            <span className="text-xs" style={{ color: "#4ade80" }}>✓ 保存済み</span>
+          )}
+        </div>
         <textarea
           value={taskDescription}
           onChange={(e) => onDescriptionChange(e.target.value)}
@@ -148,9 +158,6 @@ export default React.memo(function TaskDetailHeader({
             color: "#e2e8f0",
           }}
         />
-        {savingDescription && (
-          <span className="text-xs" style={{ color: "#4a5568" }}>保存中...</span>
-        )}
       </div>
     </>
   );
