@@ -92,6 +92,15 @@ export default function Navbar({ member }: NavbarProps) {
               進捗概要
             </a>
             <a
+              href="/sugoroku/admin/weekly-reports"
+              className="text-sm transition-colors"
+              style={{ color: "#94a3b8" }}
+              onMouseOver={(e) => (e.currentTarget.style.color = "#e2e8f0")}
+              onMouseOut={(e) => (e.currentTarget.style.color = "#94a3b8")}
+            >
+              週報一覧
+            </a>
+            <a
               href="/sugoroku/admin/daily-reports"
               className="text-sm transition-colors"
               style={{ color: "#94a3b8" }}
@@ -128,7 +137,7 @@ export default function Navbar({ member }: NavbarProps) {
             </a>
           </div>
         ) : (
-          /* メンバー向け: 要修正バッジ + 日報ボタン */
+          /* メンバー向け: 要修正バッジ + 日報・週報ボタン */
           <div className="flex items-center gap-3">
             {revisionCount > 0 && (
               <span
@@ -142,6 +151,25 @@ export default function Navbar({ member }: NavbarProps) {
                 ⚠️ 要修正 {revisionCount}件
               </span>
             )}
+            <a
+              href="/sugoroku/my-reports"
+              className="text-sm font-medium px-3 py-1.5 rounded-lg transition-all"
+              style={{
+                background: "rgba(108,99,255,0.15)",
+                border: "1px solid rgba(108,99,255,0.35)",
+                color: "#a78bfa",
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.background = "rgba(108,99,255,0.25)";
+                e.currentTarget.style.color = "#c4b5fd";
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.background = "rgba(108,99,255,0.15)";
+                e.currentTarget.style.color = "#a78bfa";
+              }}
+            >
+              📝 日報・週報
+            </a>
           </div>
         )}
 
