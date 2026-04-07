@@ -10,13 +10,24 @@ export function toJSTDate(utcStr: string): string {
   return toJSTDateStr(new Date(utcStr));
 }
 
-/** UTC タイムスタンプ文字列を JST の "HH:MM" に変換 */
+/** UTC タイムスタンプ文字列を JST の "HH:MM" に変換（24時間表記） */
 export function toJSTTime(utcStr: string): string {
-  return new Date(utcStr).toLocaleTimeString("ja-JP", {
+  // Supabase の created_at は "+00:00" 付き ISO 文字列だが、
+  // スペース区切りや末尾なしの場合も UTC として確実にパースするよう正規化する
+  const normalized = utcStr.trim().replace(" ", "T");
+  const withZ =
+    normalized.endsWith("Z") || /[+\-]\d{2}:\d{2}$/.test(normalized)
+      ? normalized
+      : normalized + "Z";
+  const parts = new Intl.DateTimeFormat("en-GB", {
     hour: "2-digit",
     minute: "2-digit",
+    hour12: false,
     timeZone: "Asia/Tokyo",
-  });
+  }).formatToParts(new Date(withZ));
+  const h = parts.find((p) => p.type === "hour")?.value ?? "00";
+  const m = parts.find((p) => p.type === "minute")?.value ?? "00";
+  return `${h}:${m}`;
 }
 
 /** JST で「今週の月曜日」の YYYY-MM-DD を返す */
