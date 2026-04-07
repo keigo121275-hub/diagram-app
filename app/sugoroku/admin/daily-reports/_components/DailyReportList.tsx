@@ -3,6 +3,15 @@
 import { useState, useEffect, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { MemberOption } from "../page";
+import {
+  toJSTDate,
+  toJSTTime,
+  getCurrentWeekStart,
+  addWeeks,
+  addDays,
+  formatWeekLabel,
+  formatDayLabel,
+} from "@/app/sugoroku/_lib/date-utils";
 
 export type ReportItem = {
   id: string;
@@ -13,62 +22,6 @@ export type ReportItem = {
   member_name: string;
   roadmap_title: string;
 };
-
-// ---- 日付ユーティリティ ----
-const DAYS_JA = ["日", "月", "火", "水", "木", "金", "土"];
-
-/** UTC タイムスタンプ文字列を JST の "YYYY-MM-DD" に変換 */
-function toJSTDate(utcStr: string): string {
-  return new Intl.DateTimeFormat("sv-SE", {
-    timeZone: "Asia/Tokyo",
-  }).format(new Date(utcStr));
-}
-
-/** UTC タイムスタンプ文字列を JST の "HH:MM" に変換 */
-function toJSTTime(utcStr: string): string {
-  return new Date(utcStr).toLocaleTimeString("ja-JP", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Asia/Tokyo",
-  });
-}
-
-function getCurrentWeekStart(): string {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const day = today.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  const monday = new Date(today);
-  monday.setDate(today.getDate() + diff);
-  return monday.toISOString().slice(0, 10);
-}
-
-function addWeeks(dateStr: string, delta: number): string {
-  const d = new Date(`${dateStr}T00:00:00`);
-  d.setDate(d.getDate() + delta * 7);
-  return d.toISOString().slice(0, 10);
-}
-
-function addDays(dateStr: string, days: number): string {
-  const d = new Date(`${dateStr}T00:00:00`);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
-}
-
-function formatWeekLabel(weekStart: string, weekEnd: string): string {
-  const s = new Date(`${weekStart}T00:00:00`);
-  const e = new Date(`${weekEnd}T00:00:00`);
-  const fmt = (d: Date) =>
-    `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(
-      d.getDate()
-    ).padStart(2, "0")}(${DAYS_JA[d.getDay()]})`;
-  return `${fmt(s)} 〜 ${fmt(e)}`;
-}
-
-function formatDayLabel(dateStr: string): string {
-  const d = new Date(`${dateStr}T00:00:00`);
-  return `${d.getMonth() + 1}月${d.getDate()}日（${DAYS_JA[d.getDay()]}）`;
-}
 
 // ---- Props ----
 interface DailyReportListProps {
