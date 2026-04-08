@@ -107,11 +107,13 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
   const [savingDescription, setSavingDescription] = useState(false);
   const [descriptionSaved, setDescriptionSaved] = useState(false);
   const descTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const deliverableTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // パネル unmount 時にタイマーをクリア
   useEffect(() => {
     return () => {
       if (descTimerRef.current) clearTimeout(descTimerRef.current);
+      if (deliverableTimerRef.current) clearTimeout(deliverableTimerRef.current);
     };
   }, []);
 
@@ -235,9 +237,23 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
   };
 
   const handleDeliverableBlur = async () => {
+    if (deliverableTimerRef.current) { clearTimeout(deliverableTimerRef.current); deliverableTimerRef.current = null; }
+    await saveDeliverable(deliverableNote);
+  };
+
+  const saveDeliverable = async (value: string) => {
     setSavingDeliverable(true);
-    await supabase.from("tasks").update({ deliverable_note: deliverableNote || null }).eq("id", task.id);
+    await supabase.from("tasks").update({ deliverable_note: value || null }).eq("id", task.id);
     setSavingDeliverable(false);
+  };
+
+  const handleDeliverableChange = (value: string) => {
+    setDeliverableNote(value);
+    if (deliverableTimerRef.current) clearTimeout(deliverableTimerRef.current);
+    deliverableTimerRef.current = setTimeout(async () => {
+      deliverableTimerRef.current = null;
+      await saveDeliverable(value);
+    }, 600);
   };
 
   const handleStartProgress = async () => {
@@ -356,7 +372,7 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
             savingDeliverable={savingDeliverable}
             onStartProgress={handleStartProgress}
             onSubmitApproval={handleSubmitApproval}
-            onDeliverableChange={setDeliverableNote}
+            onDeliverableChange={handleDeliverableChange}
             onDeliverableBlur={handleDeliverableBlur}
           />
         </div>

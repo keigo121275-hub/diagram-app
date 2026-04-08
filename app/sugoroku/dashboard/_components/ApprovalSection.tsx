@@ -146,6 +146,12 @@ export default React.memo(function ApprovalSection({
             value={deliverableNote}
             onChange={(e) => onDeliverableChange(e.target.value)}
             onBlur={onDeliverableBlur}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && e.currentTarget.value.endsWith("\n")) {
+                e.preventDefault();
+                onDeliverableBlur();
+              }
+            }}
             placeholder="成果物の内容や報告を入力してください..."
             rows={4}
             className="w-full text-xs outline-none resize-none rounded-lg p-3"

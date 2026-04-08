@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useEffect } from "react";
+import React, { useMemo, useEffect, useRef } from "react";
 import {
   DndContext,
   PointerSensor,
@@ -86,6 +86,9 @@ export default React.memo(function SubTaskList({
 }: SubTaskListProps) {
   const supabase = useMemo(() => createClient(), []);
 
+  const titleDebounceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const memoDebounceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { delay: 400, tolerance: 8 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 400, tolerance: 8 } })
@@ -111,29 +114,22 @@ export default React.memo(function SubTaskList({
   const [editingSmallId, setEditingSmallId] = React.useState<string | null>(null);
   const [smallTitleValues, setSmallTitleValues] = React.useState<Record<string, string>>({});
 
-  // ---- 操作ハンドラ ----
-  const saveMediumTitle = async (mediumId: string) => {
-    const trimmed = (mediumTitleValues[mediumId] ?? "").trim();
-    const original = mediumTasks.find((t) => t.id === mediumId)?.title ?? "";
-    if (!trimmed || trimmed === original) { setEditingMediumId(null); return; }
+  // ---- DB 保存コア（debounce / blur / Enter で共有） ----
+  const persistMediumTitle = async (mediumId: string, trimmed: string) => {
     const { error } = await supabase.from("tasks").update({ title: trimmed }).eq("id", mediumId);
     if (error) {
-      console.error("[SubTaskList] saveMediumTitle failed:", error);
+      console.error("[SubTaskList] persistMediumTitle failed:", error);
       setSaveError("タイトルの保存に失敗しました。再度お試しください。");
       return;
     }
     setMediumTasks((prev) => prev.map((t) => (t.id === mediumId ? { ...t, title: trimmed } : t)));
     onTaskUpdated?.(mediumId, { title: trimmed });
-    setEditingMediumId(null);
   };
 
-  const saveSmallTitle = async (mediumId: string, smallId: string) => {
-    const trimmed = (smallTitleValues[smallId] ?? "").trim();
-    const original = (smallTasksMap[mediumId] ?? []).find((t) => t.id === smallId)?.title ?? "";
-    if (!trimmed || trimmed === original) { setEditingSmallId(null); return; }
+  const persistSmallTitle = async (mediumId: string, smallId: string, trimmed: string) => {
     const { error } = await supabase.from("tasks").update({ title: trimmed }).eq("id", smallId);
     if (error) {
-      console.error("[SubTaskList] saveSmallTitle failed:", error);
+      console.error("[SubTaskList] persistSmallTitle failed:", error);
       setSaveError("タイトルの保存に失敗しました。再度お試しください。");
       return;
     }
@@ -142,18 +138,79 @@ export default React.memo(function SubTaskList({
       [mediumId]: (prev[mediumId] ?? []).map((t) => (t.id === smallId ? { ...t, title: trimmed } : t)),
     }));
     onTaskUpdated?.(smallId, { title: trimmed });
-    setEditingSmallId(null);
   };
 
-  const saveMemo = async (taskId: string) => {
-    const value = memoValues[taskId] ?? "";
+  const persistMemo = async (taskId: string, value: string) => {
     const { error } = await supabase.from("tasks").update({ description: value || null }).eq("id", taskId);
     if (error) {
-      console.error("[SubTaskList] saveMemo failed:", error);
+      console.error("[SubTaskList] persistMemo failed:", error);
       setSaveError("メモの保存に失敗しました。再度お試しください。");
       return;
     }
     onTaskUpdated?.(taskId, { description: value || null });
+  };
+
+  // ---- 操作ハンドラ ----
+  const saveMediumTitle = async (mediumId: string) => {
+    const key = `m:${mediumId}`;
+    if (titleDebounceTimers.current[key]) { clearTimeout(titleDebounceTimers.current[key]); delete titleDebounceTimers.current[key]; }
+    const trimmed = (mediumTitleValues[mediumId] ?? "").trim();
+    const original = mediumTasks.find((t) => t.id === mediumId)?.title ?? "";
+    if (!trimmed || trimmed === original) { setEditingMediumId(null); return; }
+    await persistMediumTitle(mediumId, trimmed);
+    setEditingMediumId(null);
+  };
+
+  const handleMediumTitleChange = (mediumId: string, value: string) => {
+    setMediumTitleValues((prev) => ({ ...prev, [mediumId]: value }));
+    const key = `m:${mediumId}`;
+    if (titleDebounceTimers.current[key]) clearTimeout(titleDebounceTimers.current[key]);
+    titleDebounceTimers.current[key] = setTimeout(async () => {
+      delete titleDebounceTimers.current[key];
+      const trimmed = value.trim();
+      if (!trimmed) return;
+      const original = mediumTasks.find((t) => t.id === mediumId)?.title ?? "";
+      if (trimmed === original) return;
+      await persistMediumTitle(mediumId, trimmed);
+    }, 600);
+  };
+
+  const saveSmallTitle = async (mediumId: string, smallId: string) => {
+    const key = `s:${smallId}`;
+    if (titleDebounceTimers.current[key]) { clearTimeout(titleDebounceTimers.current[key]); delete titleDebounceTimers.current[key]; }
+    const trimmed = (smallTitleValues[smallId] ?? "").trim();
+    const original = (smallTasksMap[mediumId] ?? []).find((t) => t.id === smallId)?.title ?? "";
+    if (!trimmed || trimmed === original) { setEditingSmallId(null); return; }
+    await persistSmallTitle(mediumId, smallId, trimmed);
+    setEditingSmallId(null);
+  };
+
+  const handleSmallTitleChange = (mediumId: string, smallId: string, value: string) => {
+    setSmallTitleValues((prev) => ({ ...prev, [smallId]: value }));
+    const key = `s:${smallId}`;
+    if (titleDebounceTimers.current[key]) clearTimeout(titleDebounceTimers.current[key]);
+    titleDebounceTimers.current[key] = setTimeout(async () => {
+      delete titleDebounceTimers.current[key];
+      const trimmed = value.trim();
+      if (!trimmed) return;
+      const original = (smallTasksMap[mediumId] ?? []).find((t) => t.id === smallId)?.title ?? "";
+      if (trimmed === original) return;
+      await persistSmallTitle(mediumId, smallId, trimmed);
+    }, 600);
+  };
+
+  const saveMemo = async (taskId: string) => {
+    if (memoDebounceTimers.current[taskId]) { clearTimeout(memoDebounceTimers.current[taskId]); delete memoDebounceTimers.current[taskId]; }
+    await persistMemo(taskId, memoValues[taskId] ?? "");
+  };
+
+  const handleMemoChange = (taskId: string, value: string) => {
+    setMemoValues((prev) => ({ ...prev, [taskId]: value }));
+    if (memoDebounceTimers.current[taskId]) clearTimeout(memoDebounceTimers.current[taskId]);
+    memoDebounceTimers.current[taskId] = setTimeout(async () => {
+      delete memoDebounceTimers.current[taskId];
+      await persistMemo(taskId, value);
+    }, 600);
   };
 
   const updateTaskStatus = async (
@@ -209,6 +266,7 @@ export default React.memo(function SubTaskList({
     setMediumTasks((prev) => [...prev, t]);
     setSmallTasksMap((prev) => ({ ...prev, [t.id]: [] }));
     setExpandedMediumIds((prev) => new Set([...prev, t.id]));
+    onTaskUpdated?.(t.id, t);
     setAddingMediumTitle("");
     setShowAddMediumForm(false);
     setAddingMedium(false);
@@ -241,6 +299,7 @@ export default React.memo(function SubTaskList({
       ...prev,
       [mediumId]: [...(prev[mediumId] ?? []), newTask as Task],
     }));
+    onTaskUpdated?.((newTask as Task).id, newTask as Task);
     setAddingSmallTitle((prev) => ({ ...prev, [mediumId]: "" }));
     setShowAddSmallMap((prev) => ({ ...prev, [mediumId]: false }));
     setAddingSmall(null);
@@ -451,16 +510,11 @@ export default React.memo(function SubTaskList({
                               {editingMediumId === medium.id ? (
                                 <textarea
                                   value={mediumTitleValues[medium.id] ?? medium.title}
-                                  onChange={(e) =>
-                                    setMediumTitleValues((prev) => ({ ...prev, [medium.id]: e.target.value }))
-                                  }
-                                  onBlur={() => {
-                                    saveMediumTitle(medium.id);
-                                  }}
+                                  onChange={(e) => handleMediumTitleChange(medium.id, e.target.value)}
+                                  onBlur={() => saveMediumTitle(medium.id)}
                                   onKeyDown={(e) => {
-                                    if (e.key === "Escape") {
-                                      setEditingMediumId(null);
-                                    }
+                                    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); saveMediumTitle(medium.id); }
+                                    if (e.key === "Escape") { setEditingMediumId(null); }
                                   }}
                                   onInput={(e) => {
                                     const el = e.currentTarget;
@@ -593,16 +647,11 @@ export default React.memo(function SubTaskList({
                                                 {editingSmallId === small.id ? (
                                                   <textarea
                                                     value={smallTitleValues[small.id] ?? small.title}
-                                                    onChange={(e) =>
-                                                      setSmallTitleValues((prev) => ({ ...prev, [small.id]: e.target.value }))
-                                                    }
-                                                    onBlur={() => {
-                                                      saveSmallTitle(medium.id, small.id);
-                                                    }}
+                                                    onChange={(e) => handleSmallTitleChange(medium.id, small.id, e.target.value)}
+                                                    onBlur={() => saveSmallTitle(medium.id, small.id)}
                                                     onKeyDown={(e) => {
-                                                      if (e.key === "Escape") {
-                                                        setEditingSmallId(null);
-                                                      }
+                                                      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); saveSmallTitle(medium.id, small.id); }
+                                                      if (e.key === "Escape") { setEditingSmallId(null); }
                                                     }}
                                                     onInput={(e) => {
                                                       const el = e.currentTarget;
@@ -689,7 +738,7 @@ export default React.memo(function SubTaskList({
                                             {/* 小タスクのメモ・リンク欄 */}
                                             <MemoLinkField
                                               value={memoValues[small.id] ?? ""}
-                                              onChange={(v) => setMemoValues((prev) => ({ ...prev, [small.id]: v }))}
+                                              onChange={(v) => handleMemoChange(small.id, v)}
                                               onBlur={() => saveMemo(small.id)}
                                               rows={1}
                                               compact

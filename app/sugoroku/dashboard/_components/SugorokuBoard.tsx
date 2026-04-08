@@ -59,6 +59,10 @@ export default function SugorokuBoard({
   const [localTasksMap, setLocalTasksMap] = useState<Record<string, Task[]>>({});
   const [showDailyReport, setShowDailyReport] = useState(false);
 
+  // localTasksMap を ref でも保持（handleTaskUpdated の deps を増やさないため）
+  const localTasksMapRef = useRef<Record<string, Task[]>>({});
+  localTasksMapRef.current = localTasksMap;
+
   const activeMemberId = isAdmin ? selectedMemberId : (currentMember?.id ?? "");
 
   // roadmap を早めに計算し、ref でキャプチャして Realtime effect の deps を最小化
@@ -90,6 +94,8 @@ export default function SugorokuBoard({
           if (payload.eventType === "INSERT") {
             setLocalTasksMap((prev) => {
               const current = prev[activeMemberId] ?? roadmapTasksFallbackRef.current;
+              // 楽観的追加済みの場合は重複させない
+              if (current.some((t) => t.id === (payload.new as Task).id)) return prev;
               return { ...prev, [activeMemberId]: [...current, payload.new as Task] };
             });
           } else if (payload.eventType === "UPDATE") {
@@ -213,13 +219,25 @@ export default function SugorokuBoard({
 
   const handleTaskUpdated = useCallback(
     (id: string, patch: Partial<Task>) => {
+      // INSERT かどうかを ref から判定（deps に localTasksMap を入れないため）
+      const current = localTasksMapRef.current[activeMemberId] ?? roadmapTasksFallbackRef.current;
+      const isInsert = !current.some((t) => t.id === id);
+
       setLocalTasksMap((prev) => {
-        const current = prev[activeMemberId] ?? roadmapTasksFallbackRef.current;
-        const updated = current.map((t) => (t.id === id ? { ...t, ...patch } : t));
+        const curr = prev[activeMemberId] ?? roadmapTasksFallbackRef.current;
+        if (!curr.some((t) => t.id === id)) {
+          return { ...prev, [activeMemberId]: [...curr, { id, ...patch } as Task] };
+        }
+        const updated = curr.map((t) => (t.id === id ? { ...t, ...patch } : t));
         return { ...prev, [activeMemberId]: updated };
       });
+
+      // 新規タスク追加時はサーバーデータを更新（ページ遷移後の再表示でも消えないように）
+      if (isInsert) {
+        router.refresh();
+      }
     },
-    [activeMemberId]
+    [activeMemberId, router]
   );
 
   if (roadmaps.length === 0 && !isAdmin) {

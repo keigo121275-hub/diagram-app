@@ -57,6 +57,7 @@ export default React.memo(function TaskDetailHeader({
             onChange={(e) => setTitleValue(e.target.value)}
             onBlur={handleSave}
             onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSave(); }
               if (e.key === "Escape") { e.preventDefault(); setEditing(false); setTitleValue(task.title); }
             }}
             onInput={(e) => {

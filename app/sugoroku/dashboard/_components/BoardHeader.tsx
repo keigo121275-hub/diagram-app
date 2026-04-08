@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 interface BoardHeaderProps {
@@ -26,6 +26,8 @@ export function BoardHeader({
   const [editing, setEditing] = useState(!description);
   const [draft, setDraft] = useState(description ?? "");
   const [saving, setSaving] = useState(false);
+  const boardDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const supabase = useMemo(() => createClient(), []);
 
   // メンバー切り替え時や外部からの description 変化に追従
   useEffect(() => {
@@ -35,9 +37,9 @@ export function BoardHeader({
   }, [description]);
 
   const handleConfirm = async () => {
+    if (boardDebounceRef.current) { clearTimeout(boardDebounceRef.current); boardDebounceRef.current = null; }
     if (!roadmapId || !draft.trim()) return;
     setSaving(true);
-    const supabase = createClient();
     await supabase
       .from("roadmaps")
       .update({ description: draft.trim() })
@@ -45,6 +47,17 @@ export function BoardHeader({
     setGoal(draft.trim());
     setEditing(false);
     setSaving(false);
+  };
+
+  const handleDraftChange = (value: string) => {
+    setDraft(value);
+    if (!roadmapId || !value.trim()) return;
+    if (boardDebounceRef.current) clearTimeout(boardDebounceRef.current);
+    boardDebounceRef.current = setTimeout(async () => {
+      boardDebounceRef.current = null;
+      await supabase.from("roadmaps").update({ description: value.trim() }).eq("id", roadmapId);
+      setGoal(value.trim());
+    }, 600);
   };
 
   const handleEdit = () => {
@@ -129,9 +142,9 @@ export function BoardHeader({
               </p>
               <textarea
                 value={draft}
-                onChange={(e) => setDraft(e.target.value)}
+                onChange={(e) => handleDraftChange(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleConfirm();
+                  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleConfirm(); }
                 }}
                 placeholder="例）3ヶ月後にはひとりで冒険できる一人前の旅人になる"
                 rows={2}
