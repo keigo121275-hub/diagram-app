@@ -189,6 +189,51 @@ export interface Database {
         };
         Relationships: [];
       };
+      weekly_reports: {
+        Row: {
+          id: string;
+          member_id: string;
+          week_start_date: string;
+          main_events: string | null;
+          actions: string | null;
+          last_week_results: string | null;
+          what_went_well: string | null;
+          improvements: string | null;
+          next_actions: string | null;
+          status: "draft" | "submitted";
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          member_id: string;
+          week_start_date: string;
+          main_events?: string | null;
+          actions?: string | null;
+          last_week_results?: string | null;
+          what_went_well?: string | null;
+          improvements?: string | null;
+          next_actions?: string | null;
+          status?: "draft" | "submitted";
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          member_id?: string;
+          week_start_date?: string;
+          main_events?: string | null;
+          actions?: string | null;
+          last_week_results?: string | null;
+          what_went_well?: string | null;
+          improvements?: string | null;
+          next_actions?: string | null;
+          status?: "draft" | "submitted";
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       roadmap_generations: {
         Row: {
           id: string;
@@ -236,6 +281,8 @@ export type ApprovalRequest = Database["public"]["Tables"]["approval_requests"][
 export type Comment = Database["public"]["Tables"]["comments"]["Row"];
 export type DailyReport = Database["public"]["Tables"]["daily_reports"]["Row"];
 export type RoadmapGeneration = Database["public"]["Tables"]["roadmap_generations"]["Row"];
+
+export type WeeklyReport = Database["public"]["Tables"]["weekly_reports"]["Row"];
 
 export type TaskStatus = Task["status"];
 export type MemberRole = Member["role"];

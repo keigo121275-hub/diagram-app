@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>週報機能 — すごろくロードマップ</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #232636;
+    --border: #2e3347;
+    --accent: #6c63ff;
+    --accent-dim: rgba(108,99,255,.15);
+    --green: #4ade80;
+    --yellow: #facc15;
+    --red: #f87171;
+    --text: #e2e8f0;
+    --text-dim: #94a3b8;
+    --radius: 12px;
+    --font: 'Helvetica Neue', 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.6; min-height: 100vh; }
+
+  .navbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 24px; height: 56px;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .navbar-brand {
+    font-weight: 700; font-size: 16px;
+    background: linear-gradient(135deg, var(--accent), var(--green));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .nav-right { display: flex; gap: 10px; align-items: center; }
+  .avatar-sm {
+    width: 32px; height: 32px; border-radius: 50%; color: #fff;
+    background: linear-gradient(135deg, var(--accent), #8b5cf6);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; border: 2px solid var(--border);
+  }
+
+  .page-tabs {
+    display: flex; border-bottom: 1px solid var(--border);
+    padding: 0 24px; background: var(--surface);
+  }
+  .page-tab {
+    padding: 14px 20px; font-size: 13px; color: var(--text-dim);
+    cursor: pointer; border-bottom: 2px solid transparent;
+    transition: all .2s; user-select: none; white-space: nowrap;
+  }
+  .page-tab:hover { color: var(--text); }
+  .page-tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+
+  .badge-new {
+    display: inline-block; background: linear-gradient(135deg, var(--accent), #8b5cf6);
+    color: #fff; font-size: 10px; font-weight: 700;
+    padding: 1px 6px; border-radius: 4px; vertical-align: middle; margin-left: 4px;
+  }
+
+  .main { max-width: 900px; margin: 0 auto; padding: 28px 24px; }
+
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+  .section-title { font-size: 18px; font-weight: 700; }
+  .section-sub { font-size: 13px; color: var(--text-dim); margin-top: 2px; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px; border-radius: 8px; font-size: 13px;
+    font-weight: 600; cursor: pointer; border: none; transition: all .15s;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #5a52e8; }
+  .btn-ghost { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
+  .btn-ghost:hover { color: var(--text); background: var(--surface2); }
+  .btn-ai { background: linear-gradient(135deg, #7c3aed, var(--accent)); color: #fff; font-size: 14px; padding: 10px 22px; }
+  .btn-ai:hover { opacity: .88; }
+  .btn-sm { padding: 5px 12px; font-size: 12px; }
+
+  .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .badge-draft { background: rgba(148,163,184,.15); color: var(--text-dim); }
+  .badge-submitted { background: rgba(74,222,128,.15); color: var(--green); }
+  .badge-week { background: var(--accent-dim); color: var(--accent); }
+  .badge-unsubmitted { background: rgba(248,113,113,.15); color: var(--red); }
+
+  .view-area { display: none; }
+  .view-area.active { display: block; }
+
+  /* ── FLOW ── */
+  .flow-card {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px 24px; margin-bottom: 24px;
+  }
+  .flow-label { font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 16px; }
+  .flow-steps { display: flex; align-items: center; flex-wrap: wrap; gap: 0; row-gap: 14px; }
+  .flow-step { display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 110px; }
+  .flow-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; border: 1px solid var(--border); }
+  .fi-a { background: rgba(108,99,255,.15); }
+  .fi-b { background: rgba(6,182,212,.15); }
+  .fi-c { background: rgba(74,222,128,.15); }
+  .flow-step-name { font-size: 12px; font-weight: 700; text-align: center; }
+  .flow-step-desc { font-size: 11px; color: var(--text-dim); text-align: center; line-height: 1.3; }
+  .flow-arr { font-size: 20px; color: var(--border); padding: 0 8px; margin-top: -18px; }
+
+  /* ── DAILY HISTORY ── */
+  .daily-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .daily-card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px; border-bottom: 1px solid var(--border); background: var(--surface2);
+    flex-wrap: wrap; gap: 10px;
+  }
+  .daily-card-title { font-size: 14px; font-weight: 700; }
+
+  .weekly-output-btn-wrap {
+    background: linear-gradient(135deg, rgba(108,99,255,.12), rgba(139,92,246,.06));
+    border: 1px solid rgba(108,99,255,.25);
+    border-radius: 10px; padding: 16px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 14px; flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .weekly-output-text { font-size: 13px; }
+  .weekly-output-text strong { color: var(--accent); }
+
+  .daily-row {
+    display: flex; gap: 14px; padding: 14px 20px;
+    border-bottom: 1px solid var(--border); cursor: pointer; transition: background .15s;
+  }
+  .daily-row:last-child { border-bottom: none; }
+  .daily-row:hover { background: rgba(255,255,255,.02); }
+  .daily-row-date { font-size: 11px; font-weight: 700; color: var(--accent); white-space: nowrap; padding-top: 2px; min-width: 54px; }
+  .daily-row-body { font-size: 13px; color: var(--text-dim); line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+  /* ── WEEKLY OUTPUT RESULT ── */
+  #weekly-output-section { display: none; margin-top: 24px; }
+
+  .generating-box {
+    background: var(--surface); border: 1px solid rgba(108,99,255,.3);
+    border-radius: var(--radius); padding: 32px;
+    display: flex; flex-direction: column; align-items: center; gap: 16px;
+    text-align: center;
+  }
+  .spinner { width: 36px; height: 36px; border: 3px solid rgba(108,99,255,.2); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .gen-text { font-size: 14px; color: var(--accent); font-weight: 600; }
+  .gen-sub { font-size: 12px; color: var(--text-dim); }
+
+  .weekly-result-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .weekly-result-header {
+    background: linear-gradient(135deg, rgba(74,222,128,.12), rgba(108,99,255,.08));
+    border-bottom: 1px solid var(--border); padding: 16px 24px;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+  }
+  .weekly-result-title { font-size: 15px; font-weight: 700; }
+  .weekly-result-sub { font-size: 12px; color: var(--text-dim); margin-top: 3px; }
+
+  .template-fields { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+  .t-field {}
+  .t-label { font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 7px; display: flex; align-items: center; gap: 6px; }
+  .t-num { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; background: var(--accent-dim); color: var(--accent); border-radius: 50%; font-size: 10px; font-weight: 700; }
+  .t-value {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 11px 14px;
+    font-size: 13px; line-height: 1.7; color: var(--text);
+    border-left: 3px solid var(--accent);
+  }
+  .t-textarea {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 12px;
+    font-size: 13px; line-height: 1.7; color: var(--text);
+    border-left: 3px solid var(--accent);
+    width: 100%; resize: vertical; font-family: var(--font);
+    min-height: 70px; transition: border-color .15s;
+  }
+  .t-textarea:focus { outline: none; border-color: var(--accent); border-left-color: var(--green); }
+
+  .result-actions {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 24px; border-top: 1px solid var(--border); background: var(--surface2);
+    flex-wrap: wrap; gap: 10px;
+  }
+  .result-actions-note { font-size: 12px; color: var(--text-dim); }
+
+  /* ── ADMIN TABLE ── */
+  .admin-filters { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+  .filter-sel { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 13px; padding: 7px 12px; cursor: pointer; }
+  .filter-sel:focus { outline: none; border-color: var(--accent); }
+
+  .admin-tbl { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .admin-tbl table { width: 100%; border-collapse: collapse; }
+  .admin-tbl th { background: var(--surface2); text-align: left; padding: 11px 16px; font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid var(--border); }
+  .admin-tbl td { padding: 14px 16px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .admin-tbl tr:last-child td { border-bottom: none; }
+  .admin-tbl tr:hover td { background: rgba(255,255,255,.02); }
+
+  .member-cell { display: flex; align-items: center; gap: 10px; }
+  .avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0; }
+  .av-a { background: linear-gradient(135deg, #6c63ff, #8b5cf6); }
+  .av-b { background: linear-gradient(135deg, #0ea5e9, #2563eb); }
+  .av-c { background: linear-gradient(135deg, #f59e0b, #ef4444); }
+  .av-d { background: linear-gradient(135deg, #10b981, #0891b2); }
+  .role-badge { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; }
+  .role-member { background: var(--accent-dim); color: var(--accent); }
+
+  .cell-preview { font-size: 12px; color: var(--text-dim); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-width: 200px; }
+
+  /* ── MODAL ── */
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 200; align-items: center; justify-content: center; padding: 24px; }
+  .overlay.open { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; width: 100%; max-width: 700px; max-height: 88vh; overflow-y: auto; }
+  .modal-hd { display: flex; align-items: center; justify-content: space-between; padding: 18px 24px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--surface); z-index: 1; }
+  .modal-title { font-size: 16px; font-weight: 700; }
+  .modal-close { width: 30px; height: 30px; border-radius: 50%; background: var(--surface2); border: 1px solid var(--border); color: var(--text-dim); cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; transition: all .15s; }
+  .modal-close:hover { background: var(--border); color: var(--text); }
+  .modal-body { padding: 24px; }
+  .detail-field { margin-bottom: 16px; }
+  .detail-field:last-child { margin-bottom: 0; }
+  .detail-label { font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 7px; }
+  .detail-value { font-size: 13px; line-height: 1.7; color: var(--text); background: var(--surface2); border-radius: 8px; padding: 11px 14px; border: 1px solid var(--border); border-left: 3px solid var(--accent); }
+
+  /* ── SOURCE DAILY REPORTS in modal ── */
+  .source-section { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); }
+  .source-title { font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 10px; }
+  .source-chip { display: flex; gap: 10px; padding: 8px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 6px; font-size: 12px; color: var(--text-dim); }
+  .source-chip:last-child { margin-bottom: 0; }
+  .source-chip-date { color: var(--accent); font-weight: 700; white-space: nowrap; font-size: 11px; padding-top: 1px; min-width: 50px; }
+
+  /* ── TOAST ── */
+  #toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 18px; font-size: 13px; box-shadow: 0 8px 24px rgba(0,0,0,.4); z-index: 300; transform: translateY(80px); opacity: 0; transition: all .3s; }
+
+  @media (max-width: 640px) {
+    .flow-steps { flex-direction: column; align-items: flex-start; }
+    .flow-arr { transform: rotate(90deg); }
+    .admin-tbl th:nth-child(3), .admin-tbl td:nth-child(3),
+    .admin-tbl th:nth-child(4), .admin-tbl td:nth-child(4) { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-brand">🎲 すごろくロードマップ</div>
+  <div class="nav-right">
+    <button class="btn btn-sm btn-ghost" onclick="switchRole()" id="role-btn">👤 メンバー視点</button>
+    <div class="avatar-sm">田</div>
+  </div>
+</nav>
+
+<!-- MEMBER TABS -->
+<div class="page-tabs" id="member-tabs">
+  <div class="page-tab active" onclick="switchTab(this,'daily')">📝 日報・週報 <span class="badge-new">NEW</span></div>
+  <div class="page-tab" onclick="switchTab(this,'board')">🎲 ロードマップ</div>
+</div>
+
+<!-- ADMIN TABS -->
+<div class="page-tabs" id="admin-tabs" style="display:none">
+  <div class="page-tab active" onclick="switchAdminTab(this,'a-weekly')">📋 週報一覧 <span class="badge-new">NEW</span></div>
+  <div class="page-tab" onclick="switchAdminTab(this,'a-daily')">📝 日報一覧</div>
+  <div class="page-tab" onclick="switchAdminTab(this,'a-progress')">📊 全員進捗</div>
+</div>
+
+<!-- ═══════════ MEMBER VIEW ═══════════ -->
+<div id="view-member" class="view-area active">
+
+  <!-- DAILY / WEEKLY TAB -->
+  <div id="tab-daily" class="view-area active">
+    <div class="main">
+
+      <!-- Flow -->
+      <div class="flow-card">
+        <div class="flow-label">週報の仕組み</div>
+        <div class="flow-steps">
+          <div class="flow-step">
+            <div class="flow-icon fi-a">📝</div>
+            <div class="flow-step-name">日報を書く</div>
+            <div class="flow-step-desc">毎日投稿するだけでOK</div>
+          </div>
+          <div class="flow-arr">→</div>
+          <div class="flow-step">
+            <div class="flow-icon fi-b">✨</div>
+            <div class="flow-step-name">AIが自動まとめ</div>
+            <div class="flow-step-desc">週末に日報をまとめて週報テンプレートへ変換</div>
+          </div>
+          <div class="flow-arr">→</div>
+          <div class="flow-step">
+            <div class="flow-icon fi-c">📤</div>
+            <div class="flow-step-name">確認して提出</div>
+            <div class="flow-step-desc">内容を確認してそのまま管理者へ共有</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Daily Report Card -->
+      <div class="daily-card">
+        <div class="daily-card-header">
+          <div>
+            <div class="daily-card-title">自分の日報</div>
+            <div style="font-size:12px;color:var(--text-dim);margin-top:2px;">自分が提出した日報を確認できます <span class="badge-new">NEW</span></div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <select class="filter-sel" style="font-size:12px;padding:4px 10px;">
+              <option>2026年4月</option>
+              <option>2026年3月</option>
+            </select>
+            <button class="btn btn-primary btn-sm">📝 今日の日報を書く</button>
+          </div>
+        </div>
+
+        <!-- Weekly Output Button -->
+        <div style="padding:16px 20px 0;">
+          <div class="weekly-output-btn-wrap">
+            <div class="weekly-output-text">
+              <strong>今週（3/30〜4/5）の日報が3件あります。</strong><br>
+              <span style="color:var(--text-dim);">まとめてAIが週報テンプレートに変換します。</span>
+            </div>
+            <button class="btn btn-ai" onclick="generateWeekly()">✨ この週の週報を出力する</button>
+          </div>
+        </div>
+
+        <!-- Daily List -->
+        <div id="daily-list">
+          <div class="daily-row">
+            <div class="daily-row-date">4/3 金</div>
+            <div class="daily-row-body">YouTube配信設定の確認作業を実施。スキル作成に着手し、おおまかな構成まで完成。来週のアクションも整理した。Claudeを使ったスクリプトの改善案も考えた。</div>
+          </div>
+          <div class="daily-row">
+            <div class="daily-row-date">4/2 木</div>
+            <div class="daily-row-body">タスクボードの進捗を更新。週報テンプレートの設計を上司と共有。フィードバックをメモとして残した。午後は資料整理と翌日の準備を行った。</div>
+          </div>
+          <div class="daily-row">
+            <div class="daily-row-date">4/1 水</div>
+            <div class="daily-row-body">SNSフォロワー表をAIツールで自動化できないか検討。Claudeを使ったスクリプトのたたきを作成。動作確認まで完了。チームに共有予定。</div>
+          </div>
+          <div class="daily-row">
+            <div class="daily-row-date">3/28 金</div>
+            <div class="daily-row-body">週次レビュー。先週の振り返りを行い、改善点をメモ。来週の優先タスクを3件確定した。連絡ツールの設定変更も完了。</div>
+          </div>
+          <div class="daily-row">
+            <div class="daily-row-date">3/27 木</div>
+            <div class="daily-row-body">マニュアル整備作業。引き継ぎドキュメントを更新した。レビュー依頼を出し、夕方に承認を受けた。</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Weekly Output Section -->
+      <div id="weekly-output-section">
+
+        <!-- Generating State -->
+        <div id="generating-box" class="generating-box">
+          <div class="spinner"></div>
+          <div class="gen-text">Claude が今週の日報（3件）を分析しています...</div>
+          <div class="gen-sub">日報の内容をまとめて週報テンプレートに変換中</div>
+        </div>
+
+        <!-- Result Card -->
+        <div id="weekly-result" style="display:none;">
+          <div class="weekly-result-card">
+            <div class="weekly-result-header">
+              <div>
+                <div class="weekly-result-title">📋 週報（自動生成）</div>
+                <div class="weekly-result-sub">3/30〜4/5 の日報3件からClaudeが生成しました。内容を確認・編集してから提出できます。</div>
+              </div>
+              <span class="badge badge-draft" id="result-status">下書き</span>
+            </div>
+
+            <div class="template-fields">
+              <div class="t-field">
+                <div class="t-label"><span class="t-num">1</span>主なイベント・できごと</div>
+                <textarea class="t-textarea" rows="2">AIツールによるSNSフォロワー表の自動化検討・動作確認、週報テンプレートの設計と上司共有、YouTube配信設定確認、スキル作成着手</textarea>
+              </div>
+              <div class="t-field">
+                <div class="t-label"><span class="t-num">2</span>目標に対するアクション</div>
+                <textarea class="t-textarea" rows="3">Claudeを使ったスクリプトの動作確認まで完了し、チームへの共有準備も済んだ。週報テンプレートの設計を提案・承認取得。スキルの構成設計まで完了した。</textarea>
+              </div>
+              <div class="t-field">
+                <div class="t-label"><span class="t-num">3</span>先週の結果はどうでしたか？</div>
+                <textarea class="t-textarea" rows="3">AIツールの動作確認まで完了できた点は良かった。スキル作成は構成まで止まっており、FBをもらう段階に至っていないため来週早急に提出する。</textarea>
+              </div>
+              <div class="t-field">
+                <div class="t-label"><span class="t-num">4</span>うまくいった点・感謝したいこと</div>
+                <textarea class="t-textarea" rows="2">Claudeを組み込んだ自動化が予想より早く進んだ。上司に週報フォーマットを快く承認してもらいスムーズに進行できた点に感謝。</textarea>
+              </div>
+              <div class="t-field">
+                <div class="t-label"><span class="t-num">5</span>もっとよくするには？</div>
+                <textarea class="t-textarea" rows="2">スキル作成のFBサイクルを短くする。定期的に自分の進捗をFBしてもらう仕組みを設けると精度が上がると感じる。</textarea>
+              </div>
+              <div class="t-field">
+                <div class="t-label"><span class="t-num">6</span>この報告から次のアクションは？</div>
+                <textarea class="t-textarea" rows="2">スキルを完成させてFBをもらう。AIツールをさらに実用的なレベルまで改善し、チームに展開できるか検討する。</textarea>
+              </div>
+            </div>
+
+            <div class="result-actions">
+              <div class="result-actions-note">内容を直接編集できます</div>
+              <div style="display:flex;gap:8px;">
+                <button class="btn btn-ghost" onclick="showToast('💾 下書きを保存しました')">下書き保存</button>
+                <button class="btn btn-primary" onclick="submitWeekly()">📤 週報を提出する</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- BOARD TAB -->
+  <div id="tab-board" class="view-area">
+    <div class="main" style="text-align:center;padding:80px 24px;">
+      <div style="font-size:48px;margin-bottom:14px;">🎲</div>
+      <div style="font-size:16px;font-weight:700;margin-bottom:8px;">すごろくロードマップ</div>
+      <div style="color:var(--text-dim);">実際のアプリ（Vercel）で確認できます</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ ADMIN VIEW ═══════════ -->
+<div id="view-admin" class="view-area">
+
+  <!-- ADMIN WEEKLY TAB -->
+  <div id="tab-a-weekly" class="view-area active">
+    <div class="main">
+      <div class="section-header">
+        <div>
+          <div class="section-title">週報一覧</div>
+          <div class="section-sub">全メンバーの週報（日報の自動まとめ）を確認できます</div>
+        </div>
+      </div>
+      <div class="admin-filters">
+        <select class="filter-sel">
+          <option selected>2026/3/30 〜 4/5（今週）</option>
+          <option>2026/3/23 〜 3/29（先週）</option>
+        </select>
+        <select class="filter-sel">
+          <option>すべてのメンバー</option>
+          <option>田中 一郎</option>
+          <option>佐藤 花子</option>
+          <option>鈴木 太郎</option>
+        </select>
+        <select class="filter-sel">
+          <option>すべてのステータス</option>
+          <option>提出済み</option>
+          <option>下書き</option>
+          <option>未提出</option>
+        </select>
+      </div>
+      <div class="admin-tbl">
+        <table>
+          <thead>
+            <tr>
+              <th>メンバー</th>
+              <th>対象週</th>
+              <th>主なできごと（抜粋）</th>
+              <th>次のアクション（抜粋）</th>
+              <th>ステータス</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <div class="member-cell">
+                  <div class="avatar av-a">田</div>
+                  <div>
+                    <div style="font-size:13px;font-weight:600;">田中 一郎</div>
+                    <span class="role-badge role-member">member</span>
+                  </div>
+                </div>
+              </td>
+              <td><span class="badge badge-week">3/30〜4/5</span></td>
+              <td><div class="cell-preview">AIツール自動化検討・動作確認、週報テンプレート設計・承認取得、スキル作成着手</div></td>
+              <td><div class="cell-preview">スキルを完成させFBをもらう。AIツールをチームに展開できるか検討する。</div></td>
+              <td><span class="badge badge-submitted">提出済み</span></td>
+              <td><button class="btn btn-sm btn-ghost" onclick="openAdminDetail()">詳細</button></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="member-cell">
+                  <div class="avatar av-b">佐</div>
+                  <div>
+                    <div style="font-size:13px;font-weight:600;">佐藤 花子</div>
+                    <span class="role-badge role-member">member</span>
+                  </div>
+                </div>
+              </td>
+              <td><span class="badge badge-week">3/30〜4/5</span></td>
+              <td><div class="cell-preview">新規クライアント提案書完成・上長レビュー通過、デザイン修正対応</div></td>
+              <td><div class="cell-preview">提案書の構成を初稿からもう少し練ってから出す。次回は余裕を持って進める。</div></td>
+              <td><span class="badge badge-submitted">提出済み</span></td>
+              <td><button class="btn btn-sm btn-ghost" onclick="openAdminDetail()">詳細</button></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="member-cell">
+                  <div class="avatar av-c">鈴</div>
+                  <div>
+                    <div style="font-size:13px;font-weight:600;">鈴木 太郎</div>
+                    <span class="role-badge role-member">member</span>
+                  </div>
+                </div>
+              </td>
+              <td><span class="badge badge-week">3/30〜4/5</span></td>
+              <td><div class="cell-preview">—</div></td>
+              <td><div class="cell-preview">—</div></td>
+              <td><span class="badge badge-unsubmitted">未提出</span></td>
+              <td><button class="btn btn-sm btn-ghost" disabled style="opacity:.4;cursor:default;">詳細</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN DAILY TAB -->
+  <div id="tab-a-daily" class="view-area">
+    <div class="main" style="text-align:center;padding:80px 24px;">
+      <div style="font-size:32px;margin-bottom:12px;">📝</div>
+      <div style="color:var(--text-dim);">日報一覧は既存機能（/admin/daily-reports）を参照</div>
+    </div>
+  </div>
+
+  <!-- ADMIN PROGRESS TAB -->
+  <div id="tab-a-progress" class="view-area">
+    <div class="main" style="text-align:center;padding:80px 24px;">
+      <div style="font-size:32px;margin-bottom:12px;">📊</div>
+      <div style="color:var(--text-dim);">全員進捗は既存機能（/admin/progress）を参照</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ MODAL (Admin Detail) ═══════════ -->
+<div class="overlay" id="modal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal">
+    <div class="modal-hd">
+      <div>
+        <div class="modal-title">週報詳細 — 田中 一郎</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-top:3px;">
+          <span class="badge badge-week" style="font-size:10px;">3/30〜4/5</span>&nbsp;
+          <span class="badge badge-submitted">提出済み</span>&nbsp;
+          <span style="color:var(--text-dim);">日報3件から生成</span>
+        </div>
+      </div>
+      <button class="modal-close" onclick="document.getElementById('modal').classList.remove('open')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="detail-field">
+        <div class="detail-label">① 主なイベント・できごと</div>
+        <div class="detail-value">AIツールによるSNSフォロワー表の自動化検討・動作確認、週報テンプレートの設計と上司共有、YouTube配信設定確認、スキル作成着手</div>
+      </div>
+      <div class="detail-field">
+        <div class="detail-label">② 目標に対するアクション</div>
+        <div class="detail-value">Claudeを使ったスクリプトの動作確認まで完了し、チームへの共有準備も済んだ。週報テンプレートの設計を提案・承認取得。スキルの構成設計まで完了した。</div>
+      </div>
+      <div class="detail-field">
+        <div class="detail-label">③ 先週の結果はどうでしたか？</div>
+        <div class="detail-value">AIツールの動作確認まで完了できた点は良かった。スキル作成は構成まで止まっており、FBをもらう段階に至っていないため来週早急に提出する。</div>
+      </div>
+      <div class="detail-field">
+        <div class="detail-label">④ うまくいった点・感謝したいこと</div>
+        <div class="detail-value">Claudeを組み込んだ自動化が予想より早く進んだ。上司に週報フォーマットを快く承認してもらいスムーズに進行できた点に感謝。</div>
+      </div>
+      <div class="detail-field">
+        <div class="detail-label">⑤ もっとよくするには？</div>
+        <div class="detail-value">スキル作成のFBサイクルを短くする。定期的に自分の進捗をFBしてもらう仕組みを設けると精度が上がると感じる。</div>
+      </div>
+      <div class="detail-field">
+        <div class="detail-label">⑥ この報告から次のアクションは？</div>
+        <div class="detail-value">スキルを完成させてFBをもらう。AIツールをさらに実用的なレベルまで改善し、チームに展開できるか検討する。</div>
+      </div>
+
+      <!-- Source daily reports -->
+      <div class="source-section">
+        <div class="source-title">元の日報（3件）</div>
+        <div class="source-chip">
+          <div class="source-chip-date">4/3 金</div>
+          <div>YouTube配信設定の確認作業を実施。スキル作成に着手し、おおまかな構成まで完成。来週のアクションも整理した。</div>
+        </div>
+        <div class="source-chip">
+          <div class="source-chip-date">4/2 木</div>
+          <div>タスクボードの進捗を更新。週報テンプレートの設計を上司と共有。フィードバックをメモとして残した。</div>
+        </div>
+        <div class="source-chip">
+          <div class="source-chip-date">4/1 水</div>
+          <div>SNSフォロワー表をAIツールで自動化できないか検討。Claudeを使ったスクリプトのたたきを作成。動作確認まで完了。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  let isAdmin = false;
+
+  function switchRole() {
+    isAdmin = !isAdmin;
+    document.getElementById('role-btn').textContent = isAdmin ? '🔑 管理者視点' : '👤 メンバー視点';
+    document.getElementById('view-member').classList.toggle('active', !isAdmin);
+    document.getElementById('view-admin').classList.toggle('active', isAdmin);
+    document.getElementById('member-tabs').style.display = isAdmin ? 'none' : 'flex';
+    document.getElementById('admin-tabs').style.display = isAdmin ? 'flex' : 'none';
+  }
+
+  function switchTab(el, name) {
+    document.querySelectorAll('#member-tabs .page-tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    document.querySelectorAll('#tab-daily, #tab-board').forEach(v => v.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+  }
+
+  function switchAdminTab(el, name) {
+    document.querySelectorAll('#admin-tabs .page-tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    document.querySelectorAll('#tab-a-weekly, #tab-a-daily, #tab-a-progress').forEach(v => v.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+  }
+
+  function generateWeekly() {
+    const section = document.getElementById('weekly-output-section');
+    const genBox = document.getElementById('generating-box');
+    const result = document.getElementById('weekly-result');
+
+    section.style.display = 'block';
+    genBox.style.display = 'flex';
+    result.style.display = 'none';
+    document.getElementById('result-status').className = 'badge badge-draft';
+    document.getElementById('result-status').textContent = '下書き';
+
+    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    setTimeout(() => {
+      genBox.style.display = 'none';
+      result.style.display = 'block';
+      showToast('✨ 週報の生成が完了しました。内容を確認・編集して提出してください。');
+    }, 2800);
+  }
+
+  function submitWeekly() {
+    document.getElementById('result-status').className = 'badge badge-submitted';
+    document.getElementById('result-status').textContent = '提出済み';
+    showToast('📤 週報を提出しました！管理者に共有されました。');
+  }
+
+  function openAdminDetail() {
+    document.getElementById('modal').classList.add('open');
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.transform = 'translateY(0)';
+    t.style.opacity = '1';
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => {
+      t.style.transform = 'translateY(80px)';
+      t.style.opacity = '0';
+    }, 3600);
+  }
+</script>
+</body>
+</html>
