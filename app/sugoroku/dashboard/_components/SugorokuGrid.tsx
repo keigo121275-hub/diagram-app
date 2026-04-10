@@ -29,6 +29,7 @@ interface SugorokuGridProps {
   onDeleteTask: (taskId: string) => void;
   onReorder: (newTasks: Task[]) => void;
   onTaskUpdated: (id: string, patch: Partial<Task>) => void;
+  onTaskDeleted?: (ids: string[]) => void;
 }
 
 const COLS = 3;
@@ -54,6 +55,7 @@ export function SugorokuGrid({
   onDeleteTask,
   onReorder,
   onTaskUpdated,
+  onTaskDeleted,
 }: SugorokuGridProps) {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
@@ -226,6 +228,7 @@ export function SugorokuGrid({
             allTasks={allTasks}
             onClose={handleClosePanel}
             onTaskUpdated={onTaskUpdated}
+            onTaskDeleted={onTaskDeleted}
           />
         )}
       </DndContext>

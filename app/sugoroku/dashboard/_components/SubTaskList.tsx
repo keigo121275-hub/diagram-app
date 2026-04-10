@@ -66,6 +66,8 @@ interface SubTaskListProps {
   onCommentClick: (task: Task) => void;
   /** 中・小タスクの変更を SugorokuBoard の localTasksMap に即時反映するコールバック */
   onTaskUpdated?: (id: string, patch: Partial<Task>) => void;
+  /** 削除されたタスク ID を SugorokuBoard の localTasksMap から即時除去するコールバック */
+  onTaskDeleted?: (ids: string[]) => void;
 }
 
 export default React.memo(function SubTaskList({
@@ -83,6 +85,7 @@ export default React.memo(function SubTaskList({
   setUpdatingTask,
   onCommentClick,
   onTaskUpdated,
+  onTaskDeleted,
 }: SubTaskListProps) {
   const supabase = useMemo(() => createClient(), []);
 
@@ -328,6 +331,7 @@ export default React.memo(function SubTaskList({
       delete next[mediumId];
       return next;
     });
+    onTaskDeleted?.([...smallIds, mediumId]);
   };
 
   const deleteSmallTask = async (mediumId: string, smallId: string) => {
@@ -342,6 +346,7 @@ export default React.memo(function SubTaskList({
       ...prev,
       [mediumId]: (prev[mediumId] ?? []).filter((t) => t.id !== smallId),
     }));
+    onTaskDeleted?.([smallId]);
   };
 
   const handleMediumDragEnd = async (event: DragEndEvent) => {

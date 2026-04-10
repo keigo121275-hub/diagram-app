@@ -14,9 +14,11 @@ interface TaskDetailPanelProps {
   onClose: () => void;
   /** タスク（大・中・小問わず）のフィールド変更をボードに通知（即時 UI 更新用）*/
   onTaskUpdated?: (id: string, patch: Partial<Task>) => void;
+  /** 削除されたタスク ID をボードの localTasksMap から即時除去 */
+  onTaskDeleted?: (ids: string[]) => void;
 }
 
-export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated }: TaskDetailPanelProps) {
+export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated, onTaskDeleted }: TaskDetailPanelProps) {
   const supabase = useMemo(() => createClient(), []);
 
   // ---- 中・小タスク状態 ----
@@ -360,6 +362,7 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
               setUpdatingTask={setUpdatingTask}
               onCommentClick={setCommentSubTask}
               onTaskUpdated={onTaskUpdated}
+              onTaskDeleted={onTaskDeleted}
             />
           )}
 
