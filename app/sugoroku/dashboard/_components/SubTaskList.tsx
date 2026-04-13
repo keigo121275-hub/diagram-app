@@ -527,7 +527,7 @@ export default React.memo(function SubTaskList({
                                   onBlur={() => saveMediumTitle(medium.id)}
                                   onKeyDown={(e) => {
                                     e.stopPropagation();
-                                    if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+                                    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                                       e.preventDefault();
                                       const now = Date.now();
                                       if (lastEnterRef.current?.id === medium.id && now - lastEnterRef.current.time < ENTER_CONFIRM_MS) {
@@ -674,7 +674,7 @@ export default React.memo(function SubTaskList({
                                                     onBlur={() => saveSmallTitle(medium.id, small.id)}
                                                     onKeyDown={(e) => {
                                                       e.stopPropagation();
-                                                      if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+                                                      if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                                                         e.preventDefault();
                                                         const now = Date.now();
                                                         if (lastEnterRef.current?.id === small.id && now - lastEnterRef.current.time < ENTER_CONFIRM_MS) {

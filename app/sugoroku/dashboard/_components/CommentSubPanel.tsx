@@ -90,11 +90,6 @@ export default function CommentSubPanel({
     fetchComments();
   }, [task.id]);
 
-  const handleClose = () => {
-    setVisible(false);
-    setTimeout(onClose, 200);
-  };
-
   const postComment = async () => {
     if (!commentText.trim() || posting) return;
     setPosting(true);
