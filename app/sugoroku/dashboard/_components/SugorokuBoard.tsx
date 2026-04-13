@@ -99,10 +99,19 @@ export default function SugorokuBoard({
               const current = prev[activeMemberId] ?? roadmapTasksFallbackRef.current;
               // ドラッグ並べ替え中のタスクは楽観的 UI を優先して Realtime を無視
               if (reorderingIds.current.has((payload.new as Task).id)) return prev;
+              const updated = payload.new as Task;
+              // 大タスク削除の ON DELETE SET NULL により parent_id が null になった
+              // 中・小タスクがボードに根タスクとして浮上しないよう除去する
+              if (updated.parent_id === null && (updated.level === "medium" || updated.level === "small")) {
+                return {
+                  ...prev,
+                  [activeMemberId]: current.filter((t) => t.id !== updated.id),
+                };
+              }
               return {
                 ...prev,
                 [activeMemberId]: current.map((t) =>
-                  t.id === (payload.new as Task).id ? (payload.new as Task) : t
+                  t.id === updated.id ? updated : t
                 ),
               };
             });
@@ -192,18 +201,30 @@ export default function SugorokuBoard({
     async (taskId: string) => {
       if (!confirm("このマスを削除しますか？")) return;
       setDeletingTaskId(taskId);
-      // 楽観的にローカル state から即除去
+
+      // 大タスクと子孫（中・小タスク）をローカルから一括除去する。
+      // DB は ON DELETE SET NULL のため子タスクが parent_id=NULL の UPDATE イベントを
+      // 発火させ、ボードに根タスクとして表示されてしまう問題を防ぐ。
       setLocalTasksMap((prev) => {
         const current = prev[activeMemberId] ?? roadmapTasksFallbackRef.current;
-        return { ...prev, [activeMemberId]: current.filter((t) => t.id !== taskId) };
+        const mediumIds = new Set(
+          current.filter((t) => t.parent_id === taskId).map((t) => t.id)
+        );
+        const smallIds = new Set(
+          current
+            .filter((t) => t.parent_id != null && mediumIds.has(t.parent_id))
+            .map((t) => t.id)
+        );
+        const toRemove = new Set([taskId, ...mediumIds, ...smallIds]);
+        return { ...prev, [activeMemberId]: current.filter((t) => !toRemove.has(t.id)) };
       });
+
       const supabase = createClient();
       const { error } = await supabase.from("tasks").delete().eq("id", taskId);
       setDeletingTaskId(null);
       if (error) {
         console.error("[handleDeleteTask] failed:", error);
         alert("削除に失敗しました。再度お試しください。");
-        // 楽観的更新を元に戻すため再取得
         router.refresh();
         return;
       }
