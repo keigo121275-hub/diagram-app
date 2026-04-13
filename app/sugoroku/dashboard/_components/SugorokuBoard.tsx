@@ -161,10 +161,16 @@ export default function SugorokuBoard({
     setLocalTasksMap((prev) => {
       const localTasks = prev[activeMemberId];
       if (!localTasks) return prev; // まだローカル更新なし → useMemo で roadmap.tasks を使用
-      // サーバーデータを正として採用しつつ、ローカルにしかないタスク（DB未反映の INSERT 直後）は保持
+
       const serverIds = new Set(serverTasks.map((t) => t.id));
-      const localOnly = localTasks.filter((t) => !serverIds.has(t.id));
-      const merged = [...serverTasks, ...localOnly];
+      const localIds = new Set(localTasks.map((t) => t.id));
+
+      // ローカルにも存在するサーバータスクのみ採用（楽観削除済みのタスクは復活させない）
+      const serverUpdates = serverTasks.filter((t) => localIds.has(t.id));
+      // ローカルにしかないタスクは保持（DB 未反映の楽観 INSERT）
+      const localInserts = localTasks.filter((t) => !serverIds.has(t.id));
+      const merged = [...serverUpdates, ...localInserts];
+
       // 内容が実質変わっていなければ参照を保持して不要な再レンダーを防ぐ
       if (
         merged.length === localTasks.length &&
