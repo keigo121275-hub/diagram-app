@@ -150,6 +150,35 @@ export default function SugorokuBoard({
   const rawTasksRef = useRef<Task[]>(rawTasks);
   rawTasksRef.current = rawTasks;
 
+  // router.refresh() 後にサーバーから届いた最新 tasks を localTasksMap に同期する。
+  // localTasksMap がセットされると roadmap?.tasks が useMemo で無視されるため、
+  // サーバー再取得後のデータを明示的に反映させる。
+  const prevServerTasksRef = useRef<Task[] | undefined>(undefined);
+  useEffect(() => {
+    const serverTasks = roadmap?.tasks;
+    if (!serverTasks || serverTasks === prevServerTasksRef.current) return;
+    prevServerTasksRef.current = serverTasks;
+    setLocalTasksMap((prev) => {
+      const localTasks = prev[activeMemberId];
+      if (!localTasks) return prev; // まだローカル更新なし → useMemo で roadmap.tasks を使用
+      // サーバーデータを正として採用しつつ、ローカルにしかないタスク（DB未反映の INSERT 直後）は保持
+      const serverIds = new Set(serverTasks.map((t) => t.id));
+      const localOnly = localTasks.filter((t) => !serverIds.has(t.id));
+      const merged = [...serverTasks, ...localOnly];
+      // 内容が実質変わっていなければ参照を保持して不要な再レンダーを防ぐ
+      if (
+        merged.length === localTasks.length &&
+        merged.every((t, i) => {
+          const p = localTasks[i];
+          return p && t.id === p.id && t.status === p.status && t.title === p.title;
+        })
+      ) return prev;
+      return { ...prev, [activeMemberId]: merged };
+    });
+  // activeMemberId が変わったときも再同期が必要
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roadmap?.tasks, activeMemberId]);
+
   // ドラッグ中のタスク ID を追跡して Realtime UPDATE との競合を防ぐ
   const reorderingIds = useRef<Set<string>>(new Set());
 
@@ -157,12 +186,24 @@ export default function SugorokuBoard({
     async (taskId: string) => {
       if (!confirm("このマスを削除しますか？")) return;
       setDeletingTaskId(taskId);
+      // 楽観的にローカル state から即除去
+      setLocalTasksMap((prev) => {
+        const current = prev[activeMemberId] ?? roadmapTasksFallbackRef.current;
+        return { ...prev, [activeMemberId]: current.filter((t) => t.id !== taskId) };
+      });
       const supabase = createClient();
-      await supabase.from("tasks").delete().eq("id", taskId);
+      const { error } = await supabase.from("tasks").delete().eq("id", taskId);
       setDeletingTaskId(null);
+      if (error) {
+        console.error("[handleDeleteTask] failed:", error);
+        alert("削除に失敗しました。再度お試しください。");
+        // 楽観的更新を元に戻すため再取得
+        router.refresh();
+        return;
+      }
       router.refresh();
     },
-    [router]
+    [router, activeMemberId]
   );
 
   const handleDeleteAllTasks = useCallback(async () => {
@@ -171,8 +212,13 @@ export default function SugorokuBoard({
     setDeletingAll(true);
     setConfirmDeleteAll(false);
     const supabase = createClient();
-    await supabase.from("roadmaps").delete().eq("id", roadmapId);
+    const { error } = await supabase.from("roadmaps").delete().eq("id", roadmapId);
     setDeletingAll(false);
+    if (error) {
+      console.error("[handleDeleteAllTasks] failed:", error);
+      alert("ロードマップの削除に失敗しました。再度お試しください。");
+      return;
+    }
     router.refresh();
   }, [router]);
 
@@ -193,13 +239,21 @@ export default function SugorokuBoard({
 
       // DB に order を一括更新してサーバーキャッシュも更新
       const supabase = createClient();
-      await Promise.all(
+      const results = await Promise.all(
         reorderedRootTasks.map((t) =>
           supabase.from("tasks").update({ order: t.order }).eq("id", t.id)
         )
       );
 
       reorderedIds.forEach((id) => reorderingIds.current.delete(id));
+
+      const firstError = results.find((r) => r.error)?.error;
+      if (firstError) {
+        console.error("[handleReorder] failed:", firstError);
+        // 楽観的更新を元に戻す
+        router.refresh();
+        return;
+      }
       router.refresh();
     },
     [activeMemberId, router]

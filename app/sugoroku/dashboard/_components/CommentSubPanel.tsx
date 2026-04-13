@@ -36,14 +36,20 @@ export default function CommentSubPanel({
     return () => clearTimeout(t);
   }, []);
 
+  const handleClose = () => {
+    setVisible(false);
+    setTimeout(onClose, 200);
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") handleClose();
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
+  // handleClose は onClose に依存するため onClose を deps に含める
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [onClose]);
 
   useEffect(() => {
     const fetchComments = async () => {

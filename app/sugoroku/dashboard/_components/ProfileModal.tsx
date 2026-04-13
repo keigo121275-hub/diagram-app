@@ -12,6 +12,7 @@ interface ProfileModalProps {
 
 export default function ProfileModal({ member, onClose, onUpdated }: ProfileModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const objectUrlRef = useRef<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(member.avatar_url ?? null);
   const [error, setError] = useState<string | null>(null);
@@ -26,6 +27,16 @@ export default function ProfileModal({ member, onClose, onUpdated }: ProfileModa
     return () => document.removeEventListener("keydown", handleKey);
   }, [onClose]);
 
+  // コンポーネントのアンマウント時に未解放の objectURL を解放する
+  useEffect(() => {
+    return () => {
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = null;
+      }
+    };
+  }, []);
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -38,8 +49,10 @@ export default function ProfileModal({ member, onClose, onUpdated }: ProfileModa
     setError(null);
     setUploading(true);
 
-    // プレビューを即時表示
+    // 前回の objectURL を解放してからプレビューを即時表示
+    if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
     const objectUrl = URL.createObjectURL(file);
+    objectUrlRef.current = objectUrl;
     setPreview(objectUrl);
 
     // サーバー経由でアップロード
@@ -54,11 +67,18 @@ export default function ProfileModal({ member, onClose, onUpdated }: ProfileModa
     const data = await res.json();
     if (!res.ok) {
       setError(data.error ?? "アップロードに失敗しました");
+      // objectURL を解放してプレビューを元に戻す
+      URL.revokeObjectURL(objectUrl);
+      objectUrlRef.current = null;
       setPreview(member.avatar_url ?? null);
       setUploading(false);
       return;
     }
 
+    // アップロード成功後は CDN URL をプレビューに使い objectURL を解放
+    URL.revokeObjectURL(objectUrl);
+    objectUrlRef.current = null;
+    setPreview(data.url);
     onUpdated(data.url);
     setUploading(false);
   };
@@ -68,8 +88,14 @@ export default function ProfileModal({ member, onClose, onUpdated }: ProfileModa
     if (!trimmed || trimmed === member.name) return;
     setSavingName(true);
     const supabase = createClient();
-    await supabase.from("members").update({ name: trimmed }).eq("id", member.id);
+    const { error: saveError } = await supabase
+      .from("members")
+      .update({ name: trimmed })
+      .eq("id", member.id);
     setSavingName(false);
+    if (saveError) {
+      console.error("[ProfileModal] handleSaveName failed:", saveError);
+    }
   };
 
   const initials = member.name ? member.name.slice(0, 2).toUpperCase() : "??";

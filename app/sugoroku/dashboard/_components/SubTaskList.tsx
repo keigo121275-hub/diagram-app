@@ -19,14 +19,21 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { createClient } from "@/lib/supabase/client";
 import type { Task } from "@/lib/supabase/types";
-import { STATUS_COLORS } from "@/app/sugoroku/_lib/constants";
+import { STATUS_COLORS, STATUS_LABELS } from "@/app/sugoroku/_lib/constants";
 import MemoLinkField from "./MemoLinkField";
 
-// ---- 型定義 ----
-type SubTaskStatus = "todo" | "in_progress" | "done" | "needs_revision";
-const SUB_STATUS_KEYS: SubTaskStatus[] = ["todo", "in_progress", "done", "needs_revision"];
+// ---- 定数 ----
+const TITLE_DEBOUNCE_MS = 600;
+const ENTER_CONFIRM_MS = 600;
+const ERROR_TOAST_MS = 5000;
+const DND_ACTIVATION_DELAY_MS = 400;
+const DND_ACTIVATION_TOLERANCE_PX = 8;
+const COMMENT_BADGE_MAX = 9;
 
-import { STATUS_LABELS } from "@/app/sugoroku/_lib/constants";
+// ---- 型定義 ----
+/** pending_approval は大タスク専用のため中・小タスクには使用しない */
+type SubTaskStatus = Exclude<Task["status"], "pending_approval">;
+const SUB_STATUS_KEYS: SubTaskStatus[] = ["todo", "in_progress", "done", "needs_revision"];
 const SUB_STATUS_OPTIONS = SUB_STATUS_KEYS.map((v) => ({ value: v, label: STATUS_LABELS[v] }));
 
 // ---- Sortable ラッパー ----
@@ -91,17 +98,18 @@ export default React.memo(function SubTaskList({
 
   const titleDebounceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const memoDebounceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const lastEnterRef = useRef<{ id: string; time: number } | null>(null);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { delay: 400, tolerance: 8 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 400, tolerance: 8 } })
+    useSensor(PointerSensor, { activationConstraint: { delay: DND_ACTIVATION_DELAY_MS, tolerance: DND_ACTIVATION_TOLERANCE_PX } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: DND_ACTIVATION_DELAY_MS, tolerance: DND_ACTIVATION_TOLERANCE_PX } })
   );
 
   const [saveError, setSaveError] = React.useState<string | null>(null);
 
   useEffect(() => {
     if (!saveError) return;
-    const timer = setTimeout(() => setSaveError(null), 5000);
+    const timer = setTimeout(() => setSaveError(null), ERROR_TOAST_MS);
     return () => clearTimeout(timer);
   }, [saveError]);
 
@@ -175,7 +183,7 @@ export default React.memo(function SubTaskList({
       const original = mediumTasks.find((t) => t.id === mediumId)?.title ?? "";
       if (trimmed === original) return;
       await persistMediumTitle(mediumId, trimmed);
-    }, 600);
+    }, TITLE_DEBOUNCE_MS);
   };
 
   const saveSmallTitle = async (mediumId: string, smallId: string) => {
@@ -199,7 +207,7 @@ export default React.memo(function SubTaskList({
       const original = (smallTasksMap[mediumId] ?? []).find((t) => t.id === smallId)?.title ?? "";
       if (trimmed === original) return;
       await persistSmallTitle(mediumId, smallId, trimmed);
-    }, 600);
+    }, TITLE_DEBOUNCE_MS);
   };
 
   const saveMemo = async (taskId: string) => {
@@ -213,7 +221,7 @@ export default React.memo(function SubTaskList({
     memoDebounceTimers.current[taskId] = setTimeout(async () => {
       delete memoDebounceTimers.current[taskId];
       await persistMemo(taskId, value);
-    }, 600);
+    }, TITLE_DEBOUNCE_MS);
   };
 
   const updateTaskStatus = async (
@@ -518,7 +526,17 @@ export default React.memo(function SubTaskList({
                                   onChange={(e) => handleMediumTitleChange(medium.id, e.target.value)}
                                   onBlur={() => saveMediumTitle(medium.id)}
                                   onKeyDown={(e) => {
-                                    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); saveMediumTitle(medium.id); }
+                                    e.stopPropagation();
+                                    if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+                                      e.preventDefault();
+                                      const now = Date.now();
+                                      if (lastEnterRef.current?.id === medium.id && now - lastEnterRef.current.time < ENTER_CONFIRM_MS) {
+                                        lastEnterRef.current = null;
+                                        saveMediumTitle(medium.id);
+                                      } else {
+                                        lastEnterRef.current = { id: medium.id, time: now };
+                                      }
+                                    }
                                     if (e.key === "Escape") { setEditingMediumId(null); }
                                   }}
                                   onInput={(e) => {
@@ -572,7 +590,7 @@ export default React.memo(function SubTaskList({
                                     className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center font-bold"
                                     style={{ background: "#ef4444", color: "#fff", fontSize: 9 }}
                                   >
-                                    {commentCount > 9 ? "9+" : commentCount}
+                                    {commentCount > COMMENT_BADGE_MAX ? `${COMMENT_BADGE_MAX}+` : commentCount}
                                   </span>
                                 )}
                               </button>
@@ -655,7 +673,17 @@ export default React.memo(function SubTaskList({
                                                     onChange={(e) => handleSmallTitleChange(medium.id, small.id, e.target.value)}
                                                     onBlur={() => saveSmallTitle(medium.id, small.id)}
                                                     onKeyDown={(e) => {
-                                                      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); saveSmallTitle(medium.id, small.id); }
+                                                      e.stopPropagation();
+                                                      if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+                                                        e.preventDefault();
+                                                        const now = Date.now();
+                                                        if (lastEnterRef.current?.id === small.id && now - lastEnterRef.current.time < ENTER_CONFIRM_MS) {
+                                                          lastEnterRef.current = null;
+                                                          saveSmallTitle(medium.id, small.id);
+                                                        } else {
+                                                          lastEnterRef.current = { id: small.id, time: now };
+                                                        }
+                                                      }
                                                       if (e.key === "Escape") { setEditingSmallId(null); }
                                                     }}
                                                     onInput={(e) => {
@@ -705,7 +733,7 @@ export default React.memo(function SubTaskList({
                                                       className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full flex items-center justify-center font-bold"
                                                       style={{ background: "#ef4444", color: "#fff", fontSize: 8 }}
                                                     >
-                                                      {smallCommentCount > 9 ? "9+" : smallCommentCount}
+                                                      {smallCommentCount > COMMENT_BADGE_MAX ? `${COMMENT_BADGE_MAX}+` : smallCommentCount}
                                                     </span>
                                                   )}
                                                 </button>

@@ -1,10 +1,10 @@
 import { memo, useMemo } from "react";
-import type { Member } from "@/lib/supabase/types";
+import type { Member, Task } from "@/lib/supabase/types";
 
 interface MemberTabsProps {
   members: Pick<Member, "id" | "name" | "avatar_url" | "role">[];
   selectedMemberId: string;
-  roadmaps: { member_id: string; tasks: { status: string }[] }[];
+  roadmaps: { member_id: string; tasks: Pick<Task, "status">[] }[];
   onSelect: (memberId: string) => void;
 }
 

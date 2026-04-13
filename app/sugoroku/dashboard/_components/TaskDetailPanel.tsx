@@ -193,14 +193,16 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
 
   // ---- 大タスク操作ハンドラ ----
   const handleTitleSave = async (title: string) => {
-    await supabase.from("tasks").update({ title }).eq("id", task.id);
+    const { error } = await supabase.from("tasks").update({ title }).eq("id", task.id);
+    if (error) { console.error("[TaskDetailPanel] handleTitleSave failed:", error); return; }
     onTaskUpdated?.(task.id, { title });
   };
 
   const handleDueDateBlur = async (value: string) => {
     setSavingDate(true);
-    await supabase.from("tasks").update({ due_date: value || null }).eq("id", task.id);
+    const { error } = await supabase.from("tasks").update({ due_date: value || null }).eq("id", task.id);
     setSavingDate(false);
+    if (error) { console.error("[TaskDetailPanel] handleDueDateBlur failed:", error); return; }
     onTaskUpdated?.(task.id, { due_date: value || null });
   };
 
@@ -212,7 +214,12 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
   const saveDescription = async (value: string) => {
     setSavingDescription(true);
     setDescriptionSaved(false);
-    await supabase.from("tasks").update({ description: value || null }).eq("id", task.id);
+    const { error } = await supabase.from("tasks").update({ description: value || null }).eq("id", task.id);
+    if (error) {
+      console.error("[TaskDetailPanel] saveDescription failed:", error);
+      setSavingDescription(false);
+      return;
+    }
     onTaskUpdated?.(task.id, { description: value || null });
     setSavingDescription(false);
     setDescriptionSaved(true);
@@ -245,8 +252,13 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
 
   const saveDeliverable = async (value: string) => {
     setSavingDeliverable(true);
-    await supabase.from("tasks").update({ deliverable_note: value || null }).eq("id", task.id);
+    const { error } = await supabase
+      .from("tasks")
+      .update({ deliverable_note: value || null })
+      .eq("id", task.id);
     setSavingDeliverable(false);
+    if (error) { console.error("[TaskDetailPanel] saveDeliverable failed:", error); return; }
+    onTaskUpdated?.(task.id, { deliverable_note: value || null });
   };
 
   const handleDeliverableChange = (value: string) => {
@@ -260,9 +272,10 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
 
   const handleStartProgress = async () => {
     setUpdatingLarge(true);
-    await supabase.from("tasks").update({ status: "in_progress" }).eq("id", task.id);
-    setLargeStatus("in_progress");
+    const { error } = await supabase.from("tasks").update({ status: "in_progress" }).eq("id", task.id);
     setUpdatingLarge(false);
+    if (error) { console.error("[TaskDetailPanel] handleStartProgress failed:", error); return; }
+    setLargeStatus("in_progress");
     onTaskUpdated?.(task.id, { status: "in_progress" });
   };
 
@@ -270,14 +283,20 @@ export default function TaskDetailPanel({ task, allTasks, onClose, onTaskUpdated
     setUpdatingLarge(true);
     const { data: { user } } = await supabase.auth.getUser();
     await supabase.from("approval_requests").delete().eq("task_id", task.id);
-    await supabase.from("approval_requests").insert({
+    const { error } = await supabase.from("approval_requests").insert({
       task_id: task.id,
       requested_by: user?.id,
       status: "pending",
     });
-    await supabase.from("tasks").update({ status: "pending_approval" }).eq("id", task.id);
-    setLargeStatus("pending_approval");
+    if (error) {
+      console.error("[TaskDetailPanel] handleSubmitApproval failed:", error);
+      setUpdatingLarge(false);
+      return;
+    }
+    const { error: taskError } = await supabase.from("tasks").update({ status: "pending_approval" }).eq("id", task.id);
     setUpdatingLarge(false);
+    if (taskError) { console.error("[TaskDetailPanel] handleSubmitApproval task update failed:", taskError); return; }
+    setLargeStatus("pending_approval");
     onTaskUpdated?.(task.id, { status: "pending_approval" });
   };
 
