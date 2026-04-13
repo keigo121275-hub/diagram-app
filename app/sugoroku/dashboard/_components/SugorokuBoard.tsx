@@ -69,8 +69,7 @@ export default function SugorokuBoard({
   activeRoadmapIdRef.current = roadmap?.id;
   roadmapTasksFallbackRef.current = roadmap?.tasks ?? [];
 
-  // Supabase Realtime: activeMemberId が変わったときだけ再購読。
-  // roadmaps を deps に含めないことで router.refresh() 後の購読チャーンを防ぐ。
+  // Supabase Realtime: activeMemberId が変わったときだけ再購読
   useEffect(() => {
     const roadmapId = activeRoadmapIdRef.current;
     if (!roadmapId) return;
@@ -110,9 +109,7 @@ export default function SugorokuBoard({
               }
               return {
                 ...prev,
-                [activeMemberId]: current.map((t) =>
-                  t.id === updated.id ? updated : t
-                ),
+                [activeMemberId]: current.map((t) => (t.id === updated.id ? updated : t)),
               };
             });
           } else if (payload.eventType === "DELETE") {
@@ -159,43 +156,12 @@ export default function SugorokuBoard({
   const rawTasksRef = useRef<Task[]>(rawTasks);
   rawTasksRef.current = rawTasks;
 
-  // router.refresh() 後にサーバーから届いた最新 tasks を localTasksMap に同期する。
-  // localTasksMap がセットされると roadmap?.tasks が useMemo で無視されるため、
-  // サーバー再取得後のデータを明示的に反映させる。
-  const prevServerTasksRef = useRef<Task[] | undefined>(undefined);
-  useEffect(() => {
-    const serverTasks = roadmap?.tasks;
-    if (!serverTasks || serverTasks === prevServerTasksRef.current) return;
-    prevServerTasksRef.current = serverTasks;
-    setLocalTasksMap((prev) => {
-      const localTasks = prev[activeMemberId];
-      if (!localTasks) return prev; // まだローカル更新なし → useMemo で roadmap.tasks を使用
-
-      const serverIds = new Set(serverTasks.map((t) => t.id));
-      const localIds = new Set(localTasks.map((t) => t.id));
-
-      // ローカルにも存在するサーバータスクのみ採用（楽観削除済みのタスクは復活させない）
-      const serverUpdates = serverTasks.filter((t) => localIds.has(t.id));
-      // ローカルにしかないタスクは保持（DB 未反映の楽観 INSERT）
-      const localInserts = localTasks.filter((t) => !serverIds.has(t.id));
-      const merged = [...serverUpdates, ...localInserts];
-
-      // 内容が実質変わっていなければ参照を保持して不要な再レンダーを防ぐ
-      if (
-        merged.length === localTasks.length &&
-        merged.every((t, i) => {
-          const p = localTasks[i];
-          return p && t.id === p.id && t.status === p.status && t.title === p.title;
-        })
-      ) return prev;
-      return { ...prev, [activeMemberId]: merged };
-    });
-  // activeMemberId が変わったときも再同期が必要
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roadmap?.tasks, activeMemberId]);
-
   // ドラッグ中のタスク ID を追跡して Realtime UPDATE との競合を防ぐ
   const reorderingIds = useRef<Set<string>>(new Set());
+
+  // ---- ハンドラ ----
+  // UI は Optimistic Update（楽観的更新）+ Supabase Realtime で即時反映する。
+  // router.refresh() はロードマップ削除など server component の再描画が必要な場合のみ使用。
 
   const handleDeleteTask = useCallback(
     async (taskId: string) => {
@@ -225,10 +191,9 @@ export default function SugorokuBoard({
       if (error) {
         console.error("[handleDeleteTask] failed:", error);
         alert("削除に失敗しました。再度お試しください。");
+        // 楽観的更新を元に戻すため再取得
         router.refresh();
-        return;
       }
-      router.refresh();
     },
     [router, activeMemberId]
   );
@@ -246,6 +211,7 @@ export default function SugorokuBoard({
       alert("ロードマップの削除に失敗しました。再度お試しください。");
       return;
     }
+    // ロードマップ自体が削除されるため server component の再描画が必要
     router.refresh();
   }, [router]);
 
@@ -254,17 +220,17 @@ export default function SugorokuBoard({
     async (newRootTasks: Task[]) => {
       if (!activeRoadmapIdRef.current) return;
 
-      // order フィールドを新しい位置に更新してからローカル state に反映
       const reorderedRootTasks = newRootTasks.map((t, i) => ({ ...t, order: i + 1 }));
       const otherTasks = rawTasksRef.current.filter((t) => t.parent_id !== null);
-      const updatedAllTasks = [...reorderedRootTasks, ...otherTasks];
-      setLocalTasksMap((prev) => ({ ...prev, [activeMemberId]: updatedAllTasks }));
+      setLocalTasksMap((prev) => ({
+        ...prev,
+        [activeMemberId]: [...reorderedRootTasks, ...otherTasks],
+      }));
 
       // 並べ替え中フラグをセット（Realtime UPDATE を一時的に無視）
       const reorderedIds = reorderedRootTasks.map((t) => t.id);
       reorderedIds.forEach((id) => reorderingIds.current.add(id));
 
-      // DB に order を一括更新してサーバーキャッシュも更新
       const supabase = createClient();
       const results = await Promise.all(
         reorderedRootTasks.map((t) =>
@@ -277,11 +243,9 @@ export default function SugorokuBoard({
       const firstError = results.find((r) => r.error)?.error;
       if (firstError) {
         console.error("[handleReorder] failed:", firstError);
-        // 楽観的更新を元に戻す
+        // 失敗時のみ再取得してロールバック
         router.refresh();
-        return;
       }
-      router.refresh();
     },
     [activeMemberId, router]
   );
@@ -302,14 +266,10 @@ export default function SugorokuBoard({
         if (!curr.some((t) => t.id === id)) {
           return { ...prev, [activeMemberId]: [...curr, { id, ...patch } as Task] };
         }
-        const updated = curr.map((t) => (t.id === id ? { ...t, ...patch } : t));
-        return { ...prev, [activeMemberId]: updated };
+        return { ...prev, [activeMemberId]: curr.map((t) => (t.id === id ? { ...t, ...patch } : t)) };
       });
-
-      // 追加・更新ともにサーバーキャッシュを更新（ページ遷移後も最新データを維持するため）
-      router.refresh();
     },
-    [activeMemberId, router]
+    [activeMemberId]
   );
 
   const handleTasksDeleted = useCallback(
@@ -319,9 +279,8 @@ export default function SugorokuBoard({
         const curr = prev[activeMemberId] ?? roadmapTasksFallbackRef.current;
         return { ...prev, [activeMemberId]: curr.filter((t) => !idSet.has(t.id)) };
       });
-      router.refresh();
     },
-    [activeMemberId, router]
+    [activeMemberId]
   );
 
   if (roadmaps.length === 0 && !isAdmin) {
